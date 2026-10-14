@@ -1,15 +1,23 @@
-# StockFlow API
+# StockFlow
 
 [![tests](https://github.com/mattsilveira61/stockflow-api/actions/workflows/tests.yml/badge.svg)](https://github.com/mattsilveira61/stockflow-api/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 
-API REST para gestão de produtos, estoque, clientes e pedidos de uma pequena loja.
+Sistema de estoque e pedidos de uma pequena loja: **API REST** em FastAPI + PostgreSQL e **painel web** em React.
+
+![Dashboard do StockFlow](docs/screenshots/dashboard-light.png)
 
 O foco vai além do CRUD: o projeto trata **integridade dos dados**. O estoque nunca fica negativo, nem quando vários pedidos disputam as últimas unidades ao mesmo tempo. Pedidos e cancelamentos são atômicos e toda mudança de saldo fica registrada num histórico auditável.
 
-**Stack:** Python 3.12 · FastAPI · PostgreSQL 16 · SQLAlchemy 2 · Alembic · Pydantic v2 · pytest · Docker Compose · GitHub Actions
+**Back-end:** Python 3.12 · FastAPI · PostgreSQL 16 · SQLAlchemy 2 · Alembic · Pydantic v2 · pytest
+
+**Front-end:** React 19 · TypeScript · Vite · Tailwind CSS 4 · TanStack Query · Recharts · Playwright
+
+**Infra:** Docker Compose (PostgreSQL + API + nginx) · GitHub Actions (pytest + e2e)
 
 ## O que o projeto demonstra
 
@@ -24,8 +32,26 @@ O foco vai além do CRUD: o projeto trata **integridade dos dados**. O estoque n
 | Saldo alterado "por fora" | `stock_quantity` não aceita escrita pela API de produto; só `services/inventory.move_stock` altera o saldo |
 | Bug no código deixando saldo negativo | `CHECK (stock_quantity >= 0)` no banco como última linha de defesa |
 | Dinheiro com erro de arredondamento | `NUMERIC(12,2)` no banco e `Decimal` no Python, nunca `float` |
+| Busca que exige acento ("feijao" não acha "Feijão") | Extensão `unaccent` do PostgreSQL na busca de produtos e clientes |
+| "Dia" do relatório no fuso errado (UTC) | Agrupamento e filtros por dia no fuso da loja (`America/Sao_Paulo`) |
 
 Tudo isso é coberto por testes. A concorrência é testada com **10 threads reais** disputando o mesmo estoque (veja [`tests/test_concurrency.py`](tests/test_concurrency.py)).
+
+## Painel web
+
+Interface no estilo de painel administrativo, com tema claro e escuro, que se adapta ao celular.
+
+| | |
+|---|---|
+| ![Dashboard no tema escuro](docs/screenshots/dashboard-dark.png) | ![Carrinho de novo pedido](docs/screenshots/new-order.png) |
+| **Dashboard:** faturamento, pedidos, valor em estoque, alertas de estoque baixo, vendas por dia e mais vendidos | **Novo pedido:** busca sem acento, total ao vivo, aviso de item acima do estoque e `Idempotency-Key` automática |
+| ![Detalhe do produto](docs/screenshots/product-detail.png) | ![Lista de produtos](docs/screenshots/products.png) |
+| **Produto:** gráfico do saldo ao longo do tempo (a partir do `balance_after`) e histórico auditável | **Produtos:** busca, filtros e ordenação guardados na URL, com selo de estoque ok/baixo/zerado |
+
+- **Modo leitura sem chave:** qualquer visitante navega por tudo. Para criar ou alterar dados, clique em **Entrar** e informe a `API_KEY` (conferida pela API em `POST /auth/verify` e guardada só na aba, no `sessionStorage`).
+- **Erros da API na tela certa:** "SKU já existe" aparece embaixo do campo SKU, e "estoque insuficiente" aparece no carrinho sem perder os itens.
+- **Sem CORS:** o painel chama `/api/...`. No desenvolvimento o Vite repassa para a API; no Docker quem faz isso é o nginx.
+- **Testes e2e** com Playwright cobrindo os fluxos principais: criar produto → entrada → saída recusada; pedido → baixa → cancelamento → devolução; carrinho sem estoque.
 
 ## Modelo de dados
 
@@ -91,7 +117,14 @@ copy .env.example .env      # Linux/macOS: cp .env.example .env
 docker compose up --build
 ```
 
-A API sobe em **http://localhost:8000/docs**, já com as migrações aplicadas e os dados de demonstração (8 produtos, 3 clientes). Para não criar os dados de demonstração, use `SEED_DEMO=false` no `.env`.
+| Endereço | O quê |
+|---|---|
+| **http://localhost:5173** | Painel web |
+| http://localhost:8000/docs | Documentação interativa da API (Swagger) |
+
+Tudo sobe com as migrações aplicadas e com os dados de demonstração: 30 produtos, 10 clientes e 60 dias de operação simulada (cerca de 120 pedidos), para os gráficos terem o que mostrar. Para não criar os dados de demonstração, use `SEED_DEMO=false` no `.env`.
+
+A chave para o botão **Entrar** do painel é a `API_KEY` do `.env`.
 
 ### Local (para desenvolver)
 
@@ -103,6 +136,11 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m app.seed   # opcional: dados de demonstração
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+
+# Em outro terminal: o painel com recarga automática (http://localhost:5173)
+cd frontend
+npm install
+npm run dev
 ```
 
 ### Variáveis de ambiente
@@ -114,16 +152,23 @@ py -3.12 -m venv .venv
 | `API_KEY` | Chave exigida no cabeçalho `X-API-Key` em `POST`/`PATCH` (mínimo 16 caracteres) |
 | `POSTGRES_*` | Usuário, senha, banco e porta do contêiner do PostgreSQL |
 | `SEED_DEMO` | `false` para não criar os dados de demonstração no Docker |
+| `TIMEZONE` | Fuso dos relatórios e filtros por dia (padrão `America/Sao_Paulo`) |
 
 ## Testes
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m pytest              # API
+
+cd frontend
+npm run typecheck; npm run lint                       # painel
+$env:API_KEY="<sua chave>"; npx playwright test       # e2e (com a API no ar)
 ```
 
-São 107 testes de integração rodando contra o PostgreSQL real, porque locks e transações não se comportam igual em outros bancos. O banco de teste é recriado aplicando as migrações, o que testa as migrações também. Cada teste roda numa transação desfeita no final; a exceção são os testes de concorrência, que usam conexões reais e limpam os dados depois.
+**API:** 123 testes de integração rodando contra o PostgreSQL real, porque locks e transações não se comportam igual em outros bancos. O banco de teste é recriado aplicando as migrações, o que testa as migrações também. Cada teste roda numa transação desfeita no final; a exceção são os testes de concorrência, que usam conexões reais e limpam os dados depois.
 
-O GitHub Actions roda a suíte inteira a cada push.
+**Painel:** 17 testes e2e no navegador com Playwright, contra a API e o banco reais. Os que alteram dados só rodam com `API_KEY` definida.
+
+O GitHub Actions roda dois jobs a cada push: `pytest` e o do painel (tipos, lint, build e e2e).
 
 ## Usando a API
 
@@ -143,6 +188,9 @@ As consultas (`GET`) são públicas. Para criar ou alterar dados, envie a chave 
 | `GET` | `/orders/{id}` | Pedido com itens |
 | `POST` | `/orders/{id}/cancel` | Cancelar e devolver o estoque |
 | `GET` | `/reports/low-stock` | Produtos ativos no estoque mínimo ou abaixo |
+| `GET` | `/movements` | Histórico geral (produto, tipo, motivo, datas) |
+| `GET` | `/dashboard?days=30` | Indicadores, vendas por dia, mais vendidos e últimas movimentações |
+| `POST` | `/auth/verify` | Confere a `X-API-Key` sem alterar nada (`204` = válida) |
 
 ### Exemplos
 
@@ -208,11 +256,17 @@ app/
 ├── schemas/        # Pydantic: validação de entrada e formato de saída
 ├── services/       # regras de negócio (inventory, orders, catalog, customers)
 ├── models/         # SQLAlchemy: tabelas, constraints e relações
-├── core/           # configuração e erros de negócio
+├── core/           # configuração, fuso horário e erros de negócio
 ├── db/             # engine e sessão
-└── seed.py         # dados de demonstração (idempotente)
+└── seed.py         # dados de demonstração: 60 dias simulados pelos próprios services (idempotente)
 alembic/versions/   # migrações versionadas
 tests/              # integração com PostgreSQL, incluindo concorrência
+frontend/
+├── src/api/        # cliente HTTP, tipos e hooks do TanStack Query
+├── src/components/ # layout, tabela, formulários, drawer/modal, ProductPicker, toasts
+├── src/pages/      # Dashboard, Produtos, Movimentações, Pedidos, Clientes, Categorias
+├── e2e/            # testes Playwright
+└── nginx.conf      # serve o build e repassa /api para a API
 ```
 
 ## Decisões técnicas
@@ -221,10 +275,12 @@ tests/              # integração com PostgreSQL, incluindo concorrência
 - **Validar tudo antes de baixar.** O pedido trava todos os produtos, confere estoque e status de todos e só então altera os saldos. Assim a mensagem de erro lista todos os itens em falta de uma vez.
 - **`balance_after` no histórico.** Cada movimentação guarda o saldo resultante, como um extrato bancário, e dá para auditar o saldo atual sem recalcular a soma de tudo.
 - **Enums como `VARCHAR + CHECK`.** São mais fáceis de evoluir em migrações que o `ENUM` nativo do PostgreSQL.
+- **Estado do servidor no TanStack Query.** Cada tela declara o que lê; depois de uma venda ou movimentação, as consultas que dependem do saldo (produtos, dashboard, estoque baixo, histórico) são invalidadas juntas.
+- **Filtros na URL.** Busca, filtros, ordenação e página ficam no endereço: recarregar ou compartilhar o link mantém a mesma visão.
 - **API key, não JWT.** Para uma API de demonstração, uma chave simples protege as escritas sem o peso de um sistema de usuários. Login com JWT e perfis está no meu outro projeto, o [HelpBoard](https://github.com/mattsilveira61/helpboard).
 
 ## Limitações conhecidas
 
 - Uma única chave de API para todas as escritas, sem usuários nem perfis.
-- Filtros de data em UTC.
+- Lista de clientes no filtro de pedidos e no carrinho limitada a 100 (suficiente para a demonstração).
 - Pedidos só têm os estados `CONFIRMED` e `CANCELLED`; não há pagamento nem entrega.
