@@ -2,9 +2,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { History, X } from "lucide-react";
 import { api } from "../api/client";
-import { useProductOptions } from "../api/hooks";
-import type { MovementWithProduct, Page } from "../api/types";
+import type { MovementWithProduct, Page, Product } from "../api/types";
 import { PageHeader } from "../components/Layout";
+import { ProductPicker } from "../components/ProductPicker";
 import { Pagination } from "../components/Table";
 import { Card, EmptyState, ErrorState, Spinner } from "../components/ui";
 import { REASON_LABEL } from "../lib/format";
@@ -17,7 +17,12 @@ const selectClass = "h-9 rounded-[3px] border border-line-strong bg-paper px-2.5
 
 export function MovementsPage() {
   const [f, setF] = useUrlFilters(DEFAULTS);
-  const products = useProductOptions();
+  // O filtro guarda só o id na URL; o nome vem da API para o campo continuar preenchido ao recarregar.
+  const selected = useQuery({
+    queryKey: ["product", Number(f.product_id)],
+    queryFn: () => api.get<Product>(`/products/${f.product_id}`),
+    enabled: !!f.product_id,
+  });
   const filtered = Object.entries(f).some(([k, v]) => k !== "page" && v !== "");
 
   const movements = useQuery({
@@ -31,14 +36,13 @@ export function MovementsPage() {
       <PageHeader eyebrow="Auditoria" title="Movimentações" />
       <Card className="rise">
         <div className="flex flex-wrap items-end gap-2 border-b border-line px-5 py-3">
-          <select aria-label="Produto" value={f.product_id} onChange={(e) => setF({ product_id: e.target.value })} className={clsx(selectClass, "min-w-48 flex-1")}>
-            <option value="">Todos os produtos</option>
-            {products.data?.items.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.sku})
-              </option>
-            ))}
-          </select>
+          <ProductPicker
+            label="Produto"
+            placeholder="Todos os produtos · digite para buscar"
+            value={f.product_id ? (selected.data ?? null) : null}
+            onChange={(p) => setF({ product_id: p ? String(p.id) : "" })}
+            className="min-w-60 flex-1"
+          />
           <select aria-label="Tipo" value={f.movement_type} onChange={(e) => setF({ movement_type: e.target.value })} className={selectClass}>
             <option value="">Entradas e saídas</option>
             <option value="IN">Só entradas</option>

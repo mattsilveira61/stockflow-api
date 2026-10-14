@@ -227,6 +227,7 @@ def test_list_orders_with_filters(client, db, customer):
     page = client.get("/orders", params={"page_size": 2}).json()
     assert page["total"] == 3
     assert "items" not in page["items"][0]  # a lista traz o resumo; os itens ficam no detalhe
+    assert page["items"][0]["customer_name"] == other.name
 
 
 def test_list_orders_by_date(client, db, customer):

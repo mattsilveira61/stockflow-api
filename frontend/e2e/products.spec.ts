@@ -65,7 +65,8 @@ test.describe("produtos e estoque", () => {
 
     // Aparece no histórico geral filtrado por produto
     await page.getByRole("link", { name: "Movimentações" }).click();
-    await page.getByLabel("Produto").selectOption({ label: `${name} (${sku})` });
+    await page.getByRole("combobox", { name: "Produto" }).fill(sku);
+    await page.getByRole("option", { name: new RegExp(name) }).click();
     await expect(page.getByText("2 movimentações")).toBeVisible();
   });
 

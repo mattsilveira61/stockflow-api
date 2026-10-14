@@ -41,6 +41,7 @@ class OrderSummary(BaseModel):
 
     id: int
     customer_id: int
+    customer_name: str = Field(validation_alias=AliasPath("customer", "name"))
     status: OrderStatus
     total_amount: Decimal
     created_at: datetime

@@ -1,9 +1,9 @@
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models import Customer
-from app.schemas.common import like_pattern, paginate
+from app.schemas.common import paginate, text_search
 from app.schemas.customer import CustomerCreate, CustomerFilters, CustomerUpdate
 
 
@@ -25,8 +25,7 @@ def _ensure_email_free(db: Session, email: str, exclude_id: int | None = None) -
 def list_customers(db: Session, f: CustomerFilters) -> dict:
     stmt = select(Customer).order_by(Customer.name.collate("und-x-icu"), Customer.id)
     if f.q and f.q.strip():
-        pattern = like_pattern(f.q.strip())
-        stmt = stmt.where(or_(Customer.name.ilike(pattern), Customer.email.ilike(pattern)))
+        stmt = stmt.where(text_search(f.q, Customer.name, Customer.email))
     return paginate(db, stmt, f)
 
 

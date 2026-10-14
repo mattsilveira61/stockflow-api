@@ -66,6 +66,7 @@ export type OrderStatus = "CONFIRMED" | "CANCELLED";
 export interface OrderSummary {
   id: number;
   customer_id: number;
+  customer_name: string;
   status: OrderStatus;
   total_amount: Money;
   created_at: string;

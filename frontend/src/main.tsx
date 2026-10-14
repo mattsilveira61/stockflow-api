@@ -7,8 +7,12 @@ import { Layout } from "./components/Layout";
 import { ToastProvider } from "./components/Toast";
 import "./index.css";
 import { CategoriesPage } from "./pages/Categories";
+import { CustomersPage } from "./pages/Customers";
 import { DashboardPage } from "./pages/Dashboard";
 import { MovementsPage } from "./pages/Movements";
+import { NewOrderPage } from "./pages/NewOrder";
+import { OrderDetailPage } from "./pages/OrderDetail";
+import { OrdersPage } from "./pages/Orders";
 import { ProductDetailPage } from "./pages/ProductDetail";
 import { ProductsPage } from "./pages/Products";
 import { SoonPage } from "./pages/Soon";
@@ -35,8 +39,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="produtos" element={<ProductsPage />} />
               <Route path="produtos/:id" element={<ProductDetailPage />} />
               <Route path="movimentacoes" element={<MovementsPage />} />
-              <Route path="pedidos/*" element={<SoonPage title="Pedidos" />} />
-              <Route path="clientes" element={<SoonPage title="Clientes" />} />
+              <Route path="pedidos" element={<OrdersPage />} />
+              <Route path="pedidos/novo" element={<NewOrderPage />} />
+              <Route path="pedidos/:id" element={<OrderDetailPage />} />
+              <Route path="clientes" element={<CustomersPage />} />
               <Route path="categorias" element={<CategoriesPage />} />
               <Route path="*" element={<SoonPage title="Página não encontrada" />} />
             </Route>

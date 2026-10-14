@@ -3,7 +3,7 @@ from typing import Annotated, Any, Generic, TypeVar
 
 from fastapi import Query
 from pydantic import BaseModel, ConfigDict, StringConstraints, computed_field
-from sqlalchemy import Select, func, select
+from sqlalchemy import ColumnElement, Select, func, or_, select
 from sqlalchemy.orm import Session
 
 T = TypeVar("T")
@@ -62,6 +62,12 @@ def like_pattern(text: str) -> str:
     """Busca parcial sem deixar o usuário injetar curingas do LIKE."""
     escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     return f"%{escaped}%"
+
+
+def text_search(term: str, *columns) -> ColumnElement[bool]:
+    """Busca parcial que ignora maiúsculas e acentos ("feijao" encontra "Feijão")."""
+    pattern = func.unaccent(like_pattern(term.strip()))
+    return or_(*(func.unaccent(column).ilike(pattern) for column in columns))
 
 
 _ERROR_DESCRIPTIONS = {

@@ -158,3 +158,12 @@ class TestListing:
         assert body["total"] == 4
         assert body["pages"] == 2
         assert [p["name"] for p in body["items"]] == ["Suco de uva"]
+
+
+def test_search_ignores_accents(client, db):
+    create_product(db, sku="ACC-1", name="Feijão carioca")
+    create_product(db, sku="ACC-2", name="Água mineral")
+    names = lambda q: [p["name"] for p in client.get("/products", params={"q": q}).json()["items"]]  # noqa: E731
+    assert names("feijao") == ["Feijão carioca"]
+    assert names("AGUA") == ["Água mineral"]
+    assert names("água") == ["Água mineral"]

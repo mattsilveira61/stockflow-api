@@ -9,7 +9,7 @@ from decimal import Decimal
 
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core import clock
 from app.core.errors import ConflictError, NotFoundError
@@ -26,7 +26,7 @@ def get_order(db: Session, order_id: int) -> Order:
     stmt = (
         select(Order)
         .where(Order.id == order_id)
-        .options(selectinload(Order.items).joinedload(OrderItem.product))
+        .options(selectinload(Order.items).joinedload(OrderItem.product), joinedload(Order.customer))
         .execution_options(populate_existing=True)
     )
     order = db.scalar(stmt)
@@ -134,7 +134,7 @@ def cancel_order(db: Session, order_id: int) -> Order:
 
 def list_orders(db: Session, f: OrderFilters) -> dict:
     """Datas no fuso da loja; `created_to` inclui o dia inteiro."""
-    stmt = select(Order).order_by(Order.created_at.desc(), Order.id.desc())
+    stmt = select(Order).options(joinedload(Order.customer)).order_by(Order.created_at.desc(), Order.id.desc())
     if f.customer_id is not None:
         stmt = stmt.where(Order.customer_id == f.customer_id)
     if f.status is not None:

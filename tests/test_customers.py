@@ -47,3 +47,9 @@ def test_list_search(client, db):
     assert names == ["Ana Souza", "Bruno Lima", "Carla"]
     names = [c["name"] for c in client.get("/customers", params={"q": "exemplo"}).json()["items"]]
     assert names == ["Ana Souza", "Bruno Lima"]
+
+
+def test_search_ignores_accents(client, db):
+    create_customer(db, name="João Araújo", email="joao@exemplo.com")
+    r = client.get("/customers", params={"q": "joao araujo"}).json()
+    assert [c["name"] for c in r["items"]] == ["João Araújo"]

@@ -1,12 +1,12 @@
 """Regras de cadastro de categorias e produtos (o saldo de estoque não passa por aqui)."""
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models import Category, Product
 from app.schemas.category import CategoryCreate, CategoryFilters, CategoryUpdate
-from app.schemas.common import like_pattern, order_by_param, paginate
+from app.schemas.common import order_by_param, paginate, text_search
 from app.schemas.product import ProductCreate, ProductFilters, ProductUpdate
 
 # Ordem alfabética que respeita acentos ("Água" junto do "A"); a colação padrão compara bytes.
@@ -94,8 +94,7 @@ def _ensure_sku_free(db: Session, sku: str, exclude_id: int | None = None) -> No
 def list_products(db: Session, f: ProductFilters) -> dict:
     stmt = select(Product).order_by(*order_by_param(f.sort, PRODUCT_SORT))
     if f.q and f.q.strip():
-        pattern = like_pattern(f.q.strip())
-        stmt = stmt.where(or_(Product.name.ilike(pattern), Product.sku.ilike(pattern)))
+        stmt = stmt.where(text_search(f.q, Product.name, Product.sku))
     if f.category_id is not None:
         stmt = stmt.where(Product.category_id == f.category_id)
     if f.is_active is not None:
