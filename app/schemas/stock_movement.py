@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from fastapi import Query
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, model_validator
 
 from app.models import MovementReason, MovementType
-from app.schemas.common import InputModel
+from app.schemas.common import InputModel, PageParams
 
 
 class MovementCreate(InputModel):
@@ -34,3 +35,24 @@ class MovementOut(BaseModel):
     balance_after: int
     note: str | None
     created_at: datetime
+
+
+class MovementWithProduct(MovementOut):
+    """Usado no histórico geral: traz o produto para a tela não precisar buscar um por um."""
+
+    sku: str = Field(validation_alias=AliasPath("product", "sku"))
+    product_name: str = Field(validation_alias=AliasPath("product", "name"))
+
+
+class MovementFilters(PageParams):
+    product_id: int | None = None
+    movement_type: MovementType | None = None
+    reason: MovementReason | None = None
+    created_from: date | None = Query(None, description="Data inicial (inclusiva), AAAA-MM-DD")
+    created_to: date | None = Query(None, description="Data final (inclusiva), AAAA-MM-DD")
+
+    @model_validator(mode="after")
+    def valid_range(self):
+        if self.created_from and self.created_to and self.created_from > self.created_to:
+            raise ValueError("created_from deve ser anterior ou igual a created_to")
+        return self

@@ -8,12 +8,13 @@ decide quando fazer o commit (um pedido junta várias movimentações em um comm
 from collections.abc import Iterable
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
+from app.core import clock
 from app.core.errors import ConflictError
 from app.models import MovementReason, MovementType, Order, Product, StockMovement
 from app.schemas.common import PageParams, paginate
-from app.schemas.stock_movement import MovementCreate
+from app.schemas.stock_movement import MovementCreate, MovementFilters
 from app.services.catalog import get_product
 
 
@@ -78,6 +79,26 @@ def list_movements(db: Session, product_id: int, params: PageParams) -> dict:
         .order_by(StockMovement.created_at.desc(), StockMovement.id.desc())
     )
     return paginate(db, stmt, params)
+
+
+def list_all_movements(db: Session, f: MovementFilters) -> dict:
+    """Histórico geral, do mais recente para o mais antigo, já com o produto carregado."""
+    stmt = (
+        select(StockMovement)
+        .options(joinedload(StockMovement.product))
+        .order_by(StockMovement.created_at.desc(), StockMovement.id.desc())
+    )
+    if f.product_id is not None:
+        stmt = stmt.where(StockMovement.product_id == f.product_id)
+    if f.movement_type is not None:
+        stmt = stmt.where(StockMovement.movement_type == f.movement_type)
+    if f.reason is not None:
+        stmt = stmt.where(StockMovement.reason == f.reason)
+    if f.created_from:
+        stmt = stmt.where(StockMovement.created_at >= clock.start_of_day(f.created_from))
+    if f.created_to:
+        stmt = stmt.where(StockMovement.created_at < clock.end_of_day_exclusive(f.created_to))
+    return paginate(db, stmt, f)
 
 
 def low_stock(db: Session, params: PageParams) -> dict:

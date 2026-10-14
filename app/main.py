@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import require_api_key_for_writes
-from app.api.routes import categories, customers, health, orders, products, reports
+from app.api.routes import categories, customers, dashboard, health, movements, orders, products, reports
 from app.core.errors import AppError, UnauthorizedError
 
 logger = logging.getLogger("stockflow")
@@ -75,4 +75,6 @@ app.include_router(categories.router)
 app.include_router(products.router)
 app.include_router(customers.router)
 app.include_router(orders.router)
+app.include_router(movements.router)
 app.include_router(reports.router)
+app.include_router(dashboard.router)

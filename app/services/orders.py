@@ -5,13 +5,13 @@ mudam juntos, ou nada muda.
 """
 
 from collections import Counter
-from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, selectinload
 
+from app.core import clock
 from app.core.errors import ConflictError, NotFoundError
 from app.models import MovementReason, MovementType, Order, OrderItem, OrderStatus
 from app.schemas.common import paginate
@@ -133,14 +133,14 @@ def cancel_order(db: Session, order_id: int) -> Order:
 
 
 def list_orders(db: Session, f: OrderFilters) -> dict:
-    """Datas em UTC; `created_to` inclui o dia inteiro."""
+    """Datas no fuso da loja; `created_to` inclui o dia inteiro."""
     stmt = select(Order).order_by(Order.created_at.desc(), Order.id.desc())
     if f.customer_id is not None:
         stmt = stmt.where(Order.customer_id == f.customer_id)
     if f.status is not None:
         stmt = stmt.where(Order.status == f.status)
     if f.created_from:
-        stmt = stmt.where(Order.created_at >= datetime.combine(f.created_from, time.min, timezone.utc))
+        stmt = stmt.where(Order.created_at >= clock.start_of_day(f.created_from))
     if f.created_to:
-        stmt = stmt.where(Order.created_at < datetime.combine(f.created_to + timedelta(days=1), time.min, timezone.utc))
+        stmt = stmt.where(Order.created_at < clock.end_of_day_exclusive(f.created_to))
     return paginate(db, stmt, f)

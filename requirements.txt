@@ -7,3 +7,4 @@ pydantic-settings==2.16.0
 pytest==9.1.1
 httpx2==2.13.1
 email-validator==2.3.0
+tzdata==2026.5

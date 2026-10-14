@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     test_database_url: str | None = None
     # Chave exigida no cabeçalho X-API-Key para criar e alterar dados (consultas são livres).
     api_key: str = Field(min_length=16)
+    # Fuso usado para "dia" em filtros e gráficos (o banco guarda tudo em UTC).
+    timezone: str = "America/Sao_Paulo"
 
 
 @lru_cache
