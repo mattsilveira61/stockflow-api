@@ -1,4 +1,4 @@
-# Tudo (API + banco):  docker compose up --build  →  http://localhost:8000/docs
+# Tudo (painel + API + banco):  docker compose up --build  →  painel em http://localhost:5173, API em http://localhost:8000/docs
 # Só o banco (API rodando fora do Docker, para desenvolver): docker compose up -d postgres
 services:
   postgres:
@@ -33,6 +33,17 @@ services:
       - "8000:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    container_name: stockflow-web
+    restart: unless-stopped
+    ports:
+      # Mesma porta do Vite no desenvolvimento
+      - "5173:80"
+    depends_on:
+      api:
         condition: service_healthy
 
 volumes:
