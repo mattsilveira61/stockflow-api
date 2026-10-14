@@ -15,7 +15,8 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (/recharts|d3-|victory-vendor/.test(id)) return "charts";
-          if (/react-dom|react-router|scheduler|[\/]react[\/]/.test(id)) return "react";
+          // [\\/] aceita a barra do Windows e a do Linux no caminho do arquivo
+          if (/react-dom|react-router|scheduler|[\\/]react[\\/]/.test(id)) return "react";
           if (/@tanstack/.test(id)) return "query";
         },
       },
