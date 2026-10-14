@@ -6,7 +6,11 @@ import { ApiError } from "./api/client";
 import { Layout } from "./components/Layout";
 import { ToastProvider } from "./components/Toast";
 import "./index.css";
+import { CategoriesPage } from "./pages/Categories";
 import { DashboardPage } from "./pages/Dashboard";
+import { MovementsPage } from "./pages/Movements";
+import { ProductDetailPage } from "./pages/ProductDetail";
+import { ProductsPage } from "./pages/Products";
 import { SoonPage } from "./pages/Soon";
 
 const queryClient = new QueryClient({
@@ -28,11 +32,12 @@ createRoot(document.getElementById("root")!).render(
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<DashboardPage />} />
-              <Route path="produtos/*" element={<SoonPage title="Produtos" />} />
-              <Route path="movimentacoes" element={<SoonPage title="Movimentações" />} />
+              <Route path="produtos" element={<ProductsPage />} />
+              <Route path="produtos/:id" element={<ProductDetailPage />} />
+              <Route path="movimentacoes" element={<MovementsPage />} />
               <Route path="pedidos/*" element={<SoonPage title="Pedidos" />} />
               <Route path="clientes" element={<SoonPage title="Clientes" />} />
-              <Route path="categorias" element={<SoonPage title="Categorias" />} />
+              <Route path="categorias" element={<CategoriesPage />} />
               <Route path="*" element={<SoonPage title="Página não encontrada" />} />
             </Route>
           </Routes>
