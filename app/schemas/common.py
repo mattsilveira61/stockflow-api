@@ -65,11 +65,16 @@ def like_pattern(text: str) -> str:
 
 
 _ERROR_DESCRIPTIONS = {
+    401: "X-API-Key ausente ou inválida",
     404: "Recurso não encontrado",
     409: "Regra de negócio violada",
 }
 
 
 def error_responses(*codes: int) -> dict[int | str, dict[str, Any]]:
-    """Documenta no Swagger os erros que uma rota pode devolver."""
+    """Documenta no Swagger os erros que uma rota pode devolver (rotas de escrita também podem dar 401)."""
     return {code: {"model": ErrorOut, "description": _ERROR_DESCRIPTIONS[code]} for code in codes}
+
+
+def write_responses(*codes: int) -> dict[int | str, dict[str, Any]]:
+    return error_responses(401, *codes)

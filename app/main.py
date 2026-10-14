@@ -1,17 +1,44 @@
-from fastapi import FastAPI, Request
+import logging
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
+from app.api.deps import require_api_key_for_writes
 from app.api.routes import categories, customers, health, orders, products, reports
-from app.core.errors import AppError
+from app.core.errors import AppError, UnauthorizedError
+
+logger = logging.getLogger("stockflow")
+
+DESCRIPTION = """
+API REST de estoque e pedidos com foco em integridade dos dados.
+
+- O saldo só muda por **movimentações** ou **pedidos**, e cada mudança fica no histórico.
+- Pedidos e cancelamentos são **atômicos**: tudo muda junto ou nada muda.
+- Venda simultânea das últimas unidades é segura (lock de linha no PostgreSQL).
+- `Idempotency-Key` no `POST /orders` evita pedido duplicado em reenvios.
+
+**Consultas são livres. Para `POST` e `PATCH`, clique em _Authorize_ e informe a `X-API-Key`.**
+"""
 
 app = FastAPI(
     title="StockFlow API",
-    description="API de gestão de estoque e pedidos.",
-    version="0.1.0",
+    description=DESCRIPTION,
+    version="1.0.0",
+    dependencies=[Depends(require_api_key_for_writes)],
 )
+
+
+@app.middleware("http")
+async def unexpected_error_handler(request: Request, call_next):
+    """Qualquer erro não previsto vira um 500 genérico; o detalhe vai só para o log."""
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception("Erro inesperado em %s %s", request.method, request.url.path)
+        return error_response(500, "INTERNAL_ERROR", "Erro interno no servidor. Tente de novo mais tarde.")
 
 
 def error_response(status_code: int, code: str, message: str, details=None) -> JSONResponse:
@@ -24,7 +51,10 @@ def error_response(status_code: int, code: str, message: str, details=None) -> J
 @app.exception_handler(AppError)
 def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """Converte os erros de regra de negócio dos services em respostas HTTP."""
-    return error_response(exc.status_code, exc.code, exc.message)
+    response = error_response(exc.status_code, exc.code, exc.message)
+    if isinstance(exc, UnauthorizedError):
+        response.headers["WWW-Authenticate"] = "ApiKey"
+    return response
 
 
 @app.exception_handler(RequestValidationError)

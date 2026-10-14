@@ -16,6 +16,11 @@ class AppError(Exception):
             self.code = code
 
 
+class UnauthorizedError(AppError):
+    status_code = 401
+    code = "UNAUTHORIZED"
+
+
 class NotFoundError(AppError):
     status_code = 404
     code = "NOT_FOUND"

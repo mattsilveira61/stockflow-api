@@ -25,6 +25,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://stockflow:stockflow@localhost:5432/stockflow_test
       TEST_DATABASE_URL: postgresql+psycopg://stockflow:stockflow@localhost:5432/stockflow_test
+      API_KEY: chave-de-teste-do-ci-1234567890
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

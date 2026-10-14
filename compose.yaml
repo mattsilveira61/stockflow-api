@@ -1,3 +1,4 @@
+# Tudo (API + banco):  docker compose up --build  →  http://localhost:8000/docs
 # Só o banco (API rodando fora do Docker, para desenvolver): docker compose up -d postgres
 services:
   postgres:
@@ -19,6 +20,20 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    build: .
+    container_name: stockflow-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Dentro da rede do compose o banco se chama "postgres", não localhost
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:

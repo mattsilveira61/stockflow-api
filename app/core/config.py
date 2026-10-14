@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # O .env fica na raiz do repositório, compartilhado com o compose.
@@ -12,6 +13,8 @@ class Settings(BaseSettings):
 
     database_url: str
     test_database_url: str | None = None
+    # Chave exigida no cabeçalho X-API-Key para criar e alterar dados (consultas são livres).
+    api_key: str = Field(min_length=16)
 
 
 @lru_cache

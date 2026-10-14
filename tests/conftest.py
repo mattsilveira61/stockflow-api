@@ -46,8 +46,18 @@ def db(engine):
 
 @pytest.fixture
 def client(db):
+    """Cliente já autenticado: manda a X-API-Key em toda requisição."""
     app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-API-Key": get_settings().api_key}) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def anon_client(db):
+    """Cliente sem chave, para testar o que é público e o que é protegido."""
+    app.dependency_overrides[get_db] = lambda: db
+    with TestClient(app, raise_server_exceptions=False) as c:
         yield c
     app.dependency_overrides.clear()
 
