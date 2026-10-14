@@ -63,3 +63,9 @@ def test_openapi_documents_api_key(anon_client):
     schema = anon_client.get("/openapi.json").json()
     assert schema["components"]["securitySchemes"]["APIKeyHeader"]["name"] == "X-API-Key"
     assert "401" in schema["paths"]["/orders"]["post"]["responses"]
+
+
+def test_verify_api_key(anon_client, client):
+    assert client.post("/auth/verify").status_code == 204
+    assert anon_client.post("/auth/verify").status_code == 401
+    assert anon_client.post("/auth/verify", headers={"X-API-Key": "errada"}).status_code == 401
