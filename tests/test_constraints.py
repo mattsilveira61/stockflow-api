@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.models import Order, OrderItem, OrderStatus, StockMovement
+from app.models import Category, Customer, Order, OrderItem, OrderStatus, Product, StockMovement
 from tests.conftest import create_category, create_customer, create_product
 
 
@@ -31,24 +31,21 @@ def test_product_defaults(db):
 
 
 def test_sku_unique(db):
-    create_product(db, sku="DUP-1")
-    with pytest.raises(IntegrityError) as exc, db.begin_nested():
-        create_product(db, sku="DUP-1")
-    assert "uq_products_sku" in str(exc.value)
+    first = create_product(db, sku="DUP-1")
+    db.add(Product(sku="DUP-1", name="Outro", unit_price=Decimal("1"), category_id=first.category_id))
+    expect_violation(db, "uq_products_sku")
 
 
 def test_customer_email_unique(db):
     create_customer(db, email="a@exemplo.com")
-    with pytest.raises(IntegrityError) as exc, db.begin_nested():
-        create_customer(db, email="a@exemplo.com")
-    assert "uq_customers_email" in str(exc.value)
+    db.add(Customer(name="Outro", email="a@exemplo.com"))
+    expect_violation(db, "uq_customers_email")
 
 
 def test_category_name_unique(db):
     create_category(db, name="Bebidas")
-    with pytest.raises(IntegrityError) as exc, db.begin_nested():
-        create_category(db, name="Bebidas")
-    assert "uq_categories_name" in str(exc.value)
+    db.add(Category(name="Bebidas"))
+    expect_violation(db, "uq_categories_name")
 
 
 def test_stock_cannot_be_negative(db):

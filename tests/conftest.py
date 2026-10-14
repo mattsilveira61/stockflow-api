@@ -53,12 +53,14 @@ def client(db):
 
 
 # ---- Fábricas de dados -------------------------------------------------------------
+# Fazem commit (que no teste vira savepoint): assim o rollback de um service que falhou
+# desfaz só o que o service fez, e não os dados preparados pelo teste.
 
 
 def create_category(db: Session, **kw) -> Category:
     cat = Category(name=kw.pop("name", f"Categoria {next(_seq)}"), **kw)
     db.add(cat)
-    db.flush()
+    db.commit()
     return cat
 
 
@@ -72,7 +74,7 @@ def create_product(db: Session, category: Category | None = None, **kw) -> Produ
         **kw,
     )
     db.add(prod)
-    db.flush()
+    db.commit()
     return prod
 
 
@@ -80,5 +82,5 @@ def create_customer(db: Session, **kw) -> Customer:
     n = next(_seq)
     cust = Customer(name=kw.pop("name", f"Cliente {n}"), email=kw.pop("email", f"cliente{n}@exemplo.com"), **kw)
     db.add(cust)
-    db.flush()
+    db.commit()
     return cust

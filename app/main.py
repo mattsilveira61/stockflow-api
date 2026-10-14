@@ -4,7 +4,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api.routes import categories, health, products, reports
+from app.api.routes import categories, customers, health, orders, products, reports
 from app.core.errors import AppError
 
 app = FastAPI(
@@ -43,4 +43,6 @@ def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONRespon
 app.include_router(health.router)
 app.include_router(categories.router)
 app.include_router(products.router)
+app.include_router(customers.router)
+app.include_router(orders.router)
 app.include_router(reports.router)
