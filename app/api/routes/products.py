@@ -3,9 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from app.api.deps import DbSession
-from app.schemas.common import Page, error_responses
+from app.schemas.common import Page, PageParams, error_responses
 from app.schemas.product import ProductCreate, ProductFilters, ProductOut, ProductUpdate
-from app.services import catalog
+from app.schemas.stock_movement import MovementCreate, MovementOut
+from app.services import catalog, inventory
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -30,3 +31,20 @@ def get_product(db: DbSession, product_id: int):
 def update_product(db: DbSession, product_id: int, data: ProductUpdate):
     """Altera os dados cadastrais ou desativa (`is_active: false`). O saldo não pode ser alterado aqui."""
     return catalog.update_product(db, product_id, data)
+
+
+@router.post(
+    "/{product_id}/movements",
+    response_model=MovementOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(404, 409),
+)
+def create_movement(db: DbSession, product_id: int, data: MovementCreate):
+    """Entrada (`IN`) ou saída (`OUT`) manual. Uma saída maior que o saldo é recusada (409)."""
+    return inventory.register_manual_movement(db, product_id, data)
+
+
+@router.get("/{product_id}/movements", response_model=Page[MovementOut], responses=error_responses(404))
+def list_movements(db: DbSession, product_id: int, params: Annotated[PageParams, Query()]):
+    """Histórico do produto, do mais recente para o mais antigo."""
+    return inventory.list_movements(db, product_id, params)

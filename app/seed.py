@@ -65,6 +65,7 @@ def seed(db: Session) -> None:
                     movement_type=MovementType.IN,
                     reason=MovementReason.PURCHASE,
                     quantity=stock,
+                    balance_after=stock,
                     note="Estoque inicial (seed)",
                 )
             )

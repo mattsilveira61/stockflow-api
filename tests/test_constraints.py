@@ -76,12 +76,12 @@ def test_order_item_quantity_positive(db):
 
 
 def test_movement_quantity_positive(db):
-    db.add(StockMovement(product=create_product(db), movement_type="IN", reason="PURCHASE", quantity=0))
+    db.add(StockMovement(product=create_product(db), movement_type="IN", reason="PURCHASE", quantity=0, balance_after=0))
     expect_violation(db, "ck_stock_movements_quantity_positive")
 
 
 def test_invalid_movement_reason(db):
-    db.add(StockMovement(product=create_product(db), movement_type="IN", reason="GIFT", quantity=1))
+    db.add(StockMovement(product=create_product(db), movement_type="IN", reason="GIFT", quantity=1, balance_after=1))
     expect_violation(db, "ck_stock_movements_reason_valid")
 
 
@@ -91,3 +91,8 @@ def test_idempotency_key_unique(db):
     db.flush()
     db.add(Order(customer=c, status=OrderStatus.CONFIRMED, total_amount=Decimal("0"), idempotency_key="k1"))
     expect_violation(db, "uq_orders_idempotency_key")
+
+
+def test_movement_balance_after_non_negative(db):
+    db.add(StockMovement(product=create_product(db), movement_type="OUT", reason="ADJUSTMENT", quantity=1, balance_after=-1))
+    expect_violation(db, "ck_stock_movements_balance_after_non_negative")

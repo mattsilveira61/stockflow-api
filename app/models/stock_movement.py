@@ -31,6 +31,7 @@ class StockMovement(Base):
         enum_check("reason", MovementReason, "reason_valid"),
         # O sentido vem de movement_type; a quantidade é sempre positiva.
         CheckConstraint("quantity > 0", name="quantity_positive"),
+        CheckConstraint("balance_after >= 0", name="balance_after_non_negative"),
         Index(None, "product_id", "created_at"),
     )
 
@@ -40,6 +41,8 @@ class StockMovement(Base):
     movement_type: Mapped[MovementType] = mapped_column(String(10))
     reason: Mapped[MovementReason] = mapped_column(String(20))
     quantity: Mapped[int]
+    # Saldo do produto logo após este movimento: o histórico funciona como um extrato.
+    balance_after: Mapped[int]
     note: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
