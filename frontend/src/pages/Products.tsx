@@ -1,11 +1,12 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { PackageSearch, Plus, Search } from "lucide-react";
+import { Download, PackageSearch, Plus, Search, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api } from "../api/client";
+import { api, csvExportUrl } from "../api/client";
 import { useCategories } from "../api/hooks";
 import type { Page, Product } from "../api/types";
+import { ProductImportDialog } from "../components/CsvImport";
 import { PageHeader } from "../components/Layout";
 import { ProductFormDrawer } from "../components/ProductForm";
 import { Pagination, SortTh, Table, Td, Th } from "../components/Table";
@@ -21,6 +22,7 @@ export function ProductsPage() {
   const [f, setF] = useUrlFilters(DEFAULTS);
   const [search, setSearch] = useState(f.q);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const categories = useCategories();
   const categoryName = new Map(categories.data?.items.map((c) => [c.id, c.name]));
 
@@ -50,11 +52,30 @@ export function ProductsPage() {
         eyebrow="Catálogo"
         title="Produtos"
         actions={
-          <WriteGuard>
-            <Button icon={Plus} onClick={() => setCreating(true)}>
-              Novo produto
-            </Button>
-          </WriteGuard>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={csvExportUrl("/products/export.csv", {
+                q: f.q,
+                category_id: f.category_id,
+                is_active: f.status === "all" ? undefined : f.status === "active",
+                sort: f.sort,
+              })}
+              download
+              className="inline-flex h-9 items-center gap-2 rounded-[3px] border border-line-strong px-3.5 text-sm font-semibold text-ink transition hover:border-ink hover:bg-sunken"
+            >
+              <Download className="size-4" /> Exportar
+            </a>
+            <WriteGuard>
+              <Button variant="ghost" icon={Upload} onClick={() => setImporting(true)}>
+                Importar
+              </Button>
+            </WriteGuard>
+            <WriteGuard>
+              <Button icon={Plus} onClick={() => setCreating(true)}>
+                Novo produto
+              </Button>
+            </WriteGuard>
+          </div>
         }
       />
 
@@ -164,6 +185,7 @@ export function ProductsPage() {
       </Card>
 
       <ProductFormDrawer open={creating} onClose={() => setCreating(false)} />
+      <ProductImportDialog open={importing} onClose={() => setImporting(false)} />
     </>
   );
 }

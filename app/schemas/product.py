@@ -48,6 +48,13 @@ class ProductOut(BaseModel):
     updated_at: datetime
 
 
+class ProductImportResult(BaseModel):
+    created: int
+    updated: int
+    unchanged: int
+    dry_run: bool
+
+
 ProductSort = Literal[
     "name", "-name", "sku", "-sku", "unit_price", "-unit_price",
     "stock_quantity", "-stock_quantity", "created_at", "-created_at", "id", "-id",

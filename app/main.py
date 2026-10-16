@@ -63,7 +63,8 @@ def error_response(status_code: int, code: str, message: str, details=None) -> J
 @app.exception_handler(AppError)
 def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     """Converte os erros de regra de negócio dos services em respostas HTTP."""
-    response = error_response(exc.status_code, exc.code, exc.message)
+    # Erros com lista de detalhes (ex.: linhas recusadas na importação de CSV) vão em `details`
+    response = error_response(exc.status_code, exc.code, exc.message, getattr(exc, "errors", None) or None)
     if isinstance(exc, UnauthorizedError):
         response.headers["WWW-Authenticate"] = "ApiKey"
     return response

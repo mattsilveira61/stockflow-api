@@ -83,7 +83,7 @@ def list_movements(db: Session, product_id: int, params: PageParams) -> dict:
     return paginate(db, stmt, params)
 
 
-def list_all_movements(db: Session, f: MovementFilters) -> dict:
+def movements_query(f: MovementFilters):
     """Histórico geral, do mais recente para o mais antigo, já com o produto carregado."""
     stmt = (
         select(StockMovement)
@@ -100,7 +100,11 @@ def list_all_movements(db: Session, f: MovementFilters) -> dict:
         stmt = stmt.where(StockMovement.created_at >= clock.start_of_day(f.created_from))
     if f.created_to:
         stmt = stmt.where(StockMovement.created_at < clock.end_of_day_exclusive(f.created_to))
-    return paginate(db, stmt, f)
+    return stmt
+
+
+def list_all_movements(db: Session, f: MovementFilters) -> dict:
+    return paginate(db, movements_query(f), f)
 
 
 def low_stock(db: Session, params: PageParams) -> dict:

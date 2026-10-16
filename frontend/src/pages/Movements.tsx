@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { History, X } from "lucide-react";
-import { api } from "../api/client";
+import { Download, History, X } from "lucide-react";
+import { api, csvExportUrl } from "../api/client";
 import type { MovementWithProduct, Page, Product } from "../api/types";
 import { PageHeader } from "../components/Layout";
 import { ProductPicker } from "../components/ProductPicker";
@@ -33,7 +33,19 @@ export function MovementsPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Auditoria" title="Movimentações" />
+      <PageHeader
+        eyebrow="Auditoria"
+        title="Movimentações"
+        actions={
+          <a
+            href={csvExportUrl("/movements/export.csv", { ...f, page: undefined })}
+            download
+            className="inline-flex h-9 items-center gap-2 rounded-[3px] border border-line-strong px-3.5 text-sm font-semibold text-ink transition hover:border-ink hover:bg-sunken"
+          >
+            <Download className="size-4" /> Exportar CSV
+          </a>
+        }
+      />
       <Card className="rise">
         <div className="flex flex-wrap items-end gap-2 border-b border-line px-5 py-3">
           <ProductPicker

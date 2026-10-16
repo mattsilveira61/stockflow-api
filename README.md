@@ -33,6 +33,8 @@ O foco vai além do CRUD: o projeto trata **integridade dos dados**. O estoque n
 | Bug no código deixando saldo negativo | `CHECK (stock_quantity >= 0)` no banco como última linha de defesa |
 | Mercadoria recebida duas vezes (clique duplo, duas abas) | Pedido de compra com status `DRAFT → ORDERED → RECEIVED`; receber é um `UPDATE ... WHERE status='ORDERED'`: só um recebimento dá entrada no estoque |
 | Comprar de novo o que já está a caminho | A sugestão de reposição desconta as compras enviadas e ainda não recebidas |
+| Importação de planilha que grava metade e para no meio | Valida o arquivo inteiro antes, grava numa transação só e devolve cada erro com linha e coluna; com `dry_run=true` só mostra o que mudaria |
+| CSV exportado executando fórmula ao abrir no Excel | Células que começam com `= + - @` ganham um apóstrofo na exportação |
 | Dinheiro com erro de arredondamento | `NUMERIC(12,2)` no banco e `Decimal` no Python, nunca `float` |
 | Busca que exige acento ("feijao" não acha "Feijão") | Extensão `unaccent` do PostgreSQL na busca de produtos e clientes |
 | "Dia" do relatório no fuso errado (UTC) | Agrupamento e filtros por dia no fuso da loja (`America/Sao_Paulo`) |
@@ -54,6 +56,7 @@ Interface no estilo de painel administrativo, com tema claro e escuro, que se ad
 - **Erros da API na tela certa:** "SKU já existe" aparece embaixo do campo SKU, e "estoque insuficiente" aparece no carrinho sem perder os itens.
 - **Sem CORS:** o painel chama `/api/...`. No desenvolvimento o Vite repassa para a API; no Docker quem faz isso é o nginx.
 - **Compras:** fornecedores, pedidos de compra com sugestão de reposição e recebimento que dá entrada no estoque; cada movimentação mostra de qual compra veio.
+- **Planilhas:** exportar produtos e movimentações com os filtros da tela e importar produtos com prévia (novos, atualizados, sem mudança) antes de gravar.
 - **Testes e2e** com Playwright cobrindo os fluxos principais: criar produto → entrada → saída recusada; pedido → baixa → cancelamento → devolução; compra → envio → recebimento → entrada; carrinho sem estoque.
 
 ## Modelo de dados
@@ -203,6 +206,9 @@ As consultas (`GET`) são públicas. Para criar ou alterar dados, envie a chave 
 | `POST` | `/purchases/{id}/receive` | Enviado → recebido: dá entrada de todos os itens numa transação |
 | `POST` | `/purchases/{id}/cancel` | Cancela rascunho ou enviado (recebido não cancela) |
 | `GET` | `/purchases/suggestions` | Sugestão de reposição: produtos abaixo do mínimo, descontando o que está a caminho |
+| `GET` | `/products/export.csv` | Produtos em CSV (`;`, vírgula decimal, abre no Excel) com os filtros da listagem |
+| `POST` | `/products/import` | Importa CSV: cria SKUs novos e atualiza os existentes, tudo ou nada (`dry_run=true` só confere) |
+| `GET` | `/movements/export.csv` | Histórico de movimentações em CSV com os filtros da listagem |
 | `GET` | `/reports/low-stock` | Produtos ativos no estoque mínimo ou abaixo |
 | `GET` | `/movements` | Histórico geral (produto, tipo, motivo, datas) |
 | `GET` | `/dashboard?days=30` | Indicadores, vendas por dia, mais vendidos e últimas movimentações |

@@ -91,7 +91,8 @@ def _ensure_sku_free(db: Session, sku: str, exclude_id: int | None = None) -> No
         raise ConflictError("Já existe um produto com esse SKU", "SKU_TAKEN")
 
 
-def list_products(db: Session, f: ProductFilters) -> dict:
+def products_query(f: ProductFilters):
+    """Mesma consulta da listagem e da exportação CSV."""
     stmt = select(Product).order_by(*order_by_param(f.sort, PRODUCT_SORT))
     if f.q and f.q.strip():
         stmt = stmt.where(text_search(f.q, Product.name, Product.sku))
@@ -99,7 +100,11 @@ def list_products(db: Session, f: ProductFilters) -> dict:
         stmt = stmt.where(Product.category_id == f.category_id)
     if f.is_active is not None:
         stmt = stmt.where(Product.is_active == f.is_active)
-    return paginate(db, stmt, f)
+    return stmt
+
+
+def list_products(db: Session, f: ProductFilters) -> dict:
+    return paginate(db, products_query(f), f)
 
 
 def create_product(db: Session, data: ProductCreate) -> Product:

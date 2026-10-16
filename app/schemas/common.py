@@ -74,6 +74,7 @@ _ERROR_DESCRIPTIONS = {
     401: "X-API-Key ausente ou inválida",
     404: "Recurso não encontrado",
     409: "Regra de negócio violada",
+    422: "Dados inválidos (detalhes por campo ou por linha em `details`)",
 }
 
 
