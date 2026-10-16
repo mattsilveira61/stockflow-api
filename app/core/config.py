@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # O .env fica na raiz do repositório, compartilhado com o compose.
@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     demo_password: str | None = None
     # Fuso usado para "dia" em filtros e gráficos (o banco guarda tudo em UTC).
     timezone: str = "America/Sao_Paulo"
+
+    @field_validator("database_url", "test_database_url")
+    @classmethod
+    def _use_psycopg(cls, url: str | None) -> str | None:
+        """O Neon entrega "postgresql://..." (ou "postgres://..."); o SQLAlchemy precisa saber o driver."""
+        if url and url.startswith(("postgres://", "postgresql://")):
+            return "postgresql+psycopg://" + url.split("://", 1)[1]
+        return url
 
 
 @lru_cache

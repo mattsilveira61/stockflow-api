@@ -20,11 +20,14 @@ export function LoginScreen({ expired }: { expired?: boolean }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(expired ? "Sua sessão expirou. Entre de novo." : null);
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
   const queryClient = useQueryClient();
 
   async function login(emailValue: string, passwordValue: string) {
     setLoading(true);
     setError(null);
+    // No plano grátis a API dorme depois de 15 min sem uso e leva ~1 min para acordar
+    const timer = setTimeout(() => setSlow(true), 3000);
     try {
       const res = await request<{ access_token: string; user: User }>("POST", "/auth/login", {
         body: { email: emailValue.trim(), password: passwordValue },
@@ -35,6 +38,9 @@ export function LoginScreen({ expired }: { expired?: boolean }) {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não foi possível entrar.");
       setLoading(false);
+    } finally {
+      clearTimeout(timer);
+      setSlow(false);
     }
   }
 
@@ -74,6 +80,11 @@ export function LoginScreen({ expired }: { expired?: boolean }) {
             onChange={(e) => setPassword(e.target.value)}
             className="h-10 w-full rounded-[3px] border border-line-strong bg-paper px-3 text-sm outline-none focus:border-ink"
           />
+          {slow && !error && (
+            <p role="status" className="mt-3 text-sm text-ink-2">
+              Acordando o servidor (pode levar até 1 minuto)…
+            </p>
+          )}
           {error && (
             <p role="alert" className="mt-3 text-sm text-danger">
               {error}
