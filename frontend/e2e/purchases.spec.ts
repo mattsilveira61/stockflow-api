@@ -27,7 +27,7 @@ test.describe("compras", () => {
     await page.getByRole("button", { name: "Nova compra" }).click();
     await expect(page.getByRole("heading", { name: "Nova compra" })).toBeVisible();
     // O seed deixa produtos abaixo do mínimo: a sugestão aparece
-    await expect(page.getByText("Sugestão de reposição")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sugestão de reposição" })).toBeVisible();
 
     const picker = page.getByRole("combobox", { name: "Adicionar produto" });
     await picker.fill("arroz");
