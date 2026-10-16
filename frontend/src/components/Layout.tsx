@@ -11,7 +11,9 @@ import {
   ShoppingCart,
   Sun,
   Tags,
+  Truck,
   Users,
+  ClipboardList,
   X,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -25,8 +27,10 @@ const NAV = [
   { to: "/produtos", label: "Produtos", icon: Boxes, code: "02" },
   { to: "/movimentacoes", label: "Movimentações", icon: ArrowLeftRight, code: "03" },
   { to: "/pedidos", label: "Pedidos", icon: ShoppingCart, code: "04" },
-  { to: "/clientes", label: "Clientes", icon: Users, code: "05" },
-  { to: "/categorias", label: "Categorias", icon: Tags, code: "06" },
+  { to: "/compras", label: "Compras", icon: ClipboardList, code: "05" },
+  { to: "/fornecedores", label: "Fornecedores", icon: Truck, code: "06" },
+  { to: "/clientes", label: "Clientes", icon: Users, code: "07" },
+  { to: "/categorias", label: "Categorias", icon: Tags, code: "08" },
 ];
 
 function Logo() {

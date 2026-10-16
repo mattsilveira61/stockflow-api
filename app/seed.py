@@ -17,9 +17,21 @@ from sqlalchemy.orm import Session
 
 from app.core import clock
 from app.db.session import SessionLocal
-from app.models import Category, Customer, MovementReason, MovementType, Order, Product, StockMovement
+from app.models import (
+    Category,
+    Customer,
+    MovementReason,
+    MovementType,
+    Order,
+    Product,
+    PurchaseOrder,
+    StockMovement,
+    Supplier,
+)
 from app.schemas.order import OrderCreate
+from app.schemas.purchase import PurchaseCreate
 from app.services import orders as order_service
+from app.services import purchases as purchase_service
 from app.services.inventory import lock_products, move_stock
 
 CATEGORIES = {
@@ -63,6 +75,17 @@ PRODUCTS = [
     ("PAD-004", "Torrada integral 160 g", "Padaria", "6.79", 25, 10, 1),
     ("PAD-005", "Panetone 500 g", "Padaria", "24.90", 15, 5, 1),
 ]
+
+# Fornecedor de cada categoria (as reposições da simulação viram pedidos de compra deles)
+SUPPLIERS = {
+    "Bebidas": ("Distribuidora Rio Claro", "pedidos@rioclaro.example", "(11) 4002-1001"),
+    "Mercearia": ("Atacadão Bom Preço", "compras@bompreco.example", "(11) 4002-1002"),
+    "Limpeza": ("Limpa Tudo Distribuidora", "vendas@limpatudo.example", "(11) 4002-1003"),
+    "Higiene": ("Limpa Tudo Distribuidora", "vendas@limpatudo.example", "(11) 4002-1003"),
+    "Padaria": ("Panificadora Trigo Bom", "contato@trigobom.example", None),
+}
+# Custo de compra: 60% do preço de venda
+COST_RATE = Decimal("0.60")
 
 # Produtos que a simulação não repõe: terminam com estoque baixo ou zerado para o relatório.
 NO_RESTOCK = {"LIM-002", "HIG-005", "PAD-003", "BEB-002", "MER-008"}
@@ -127,6 +150,73 @@ def _purchase(db: Session, product_ids: list[int], quantities: dict[int, int], n
     return ids
 
 
+def _seed_suppliers(db: Session) -> None:
+    existing = set(db.scalars(select(Supplier.name)))
+    for name, email, phone in dict.fromkeys(SUPPLIERS.values()):
+        if name not in existing:
+            db.add(Supplier(name=name, email=email, phone=phone))
+    db.commit()
+
+
+def _supplier_for(db: Session, product: Product) -> Supplier:
+    name = SUPPLIERS[product.category.name][0]
+    return db.scalar(select(Supplier).where(Supplier.name == name))
+
+
+def _cost(product: Product) -> Decimal:
+    return (product.unit_price * COST_RATE).quantize(Decimal("0.01"))
+
+
+def _restock(db: Session, quantities: dict[int, int], when: datetime) -> None:
+    """Reposição como na vida real: um pedido de compra por fornecedor, enviado e recebido."""
+    by_supplier: dict[int, dict[int, int]] = {}
+    for pid, qty in quantities.items():
+        by_supplier.setdefault(_supplier_for(db, db.get(Product, pid)).id, {})[pid] = qty
+    for supplier_id, items in sorted(by_supplier.items()):
+        po = _new_purchase(db, supplier_id, items)
+        purchase_service.send_purchase(db, po.id)
+        purchase_service.receive_purchase(db, po.id)
+        ids = list(db.scalars(select(StockMovement.id).where(StockMovement.purchase_order_id == po.id)))
+        _backdate(db, when, movement_ids=ids)
+        db.execute(
+            update(PurchaseOrder)
+            .where(PurchaseOrder.id == po.id)
+            .values(
+                created_at=when - timedelta(days=2),
+                ordered_at=when - timedelta(days=2),
+                received_at=when,
+                updated_at=when,
+            )
+        )
+        db.commit()
+
+
+def _new_purchase(db: Session, supplier_id: int, items: dict[int, int], note: str | None = None) -> PurchaseOrder:
+    data = PurchaseCreate(
+        supplier_id=supplier_id,
+        items=[
+            {"product_id": pid, "quantity": q, "unit_cost": _cost(db.get(Product, pid))} for pid, q in items.items()
+        ],
+        note=note,
+    )
+    return purchase_service.create_purchase(db, data)
+
+
+def _open_purchases(db: Session) -> None:
+    """Para a demonstração ter o que receber: uma compra enviada e um rascunho dos produtos em falta."""
+    suggestions = purchase_service.restock_suggestions(db)
+    by_supplier: dict[int, dict[int, int]] = {}
+    for s in suggestions:
+        supplier = _supplier_for(db, db.get(Product, s.product_id))
+        by_supplier.setdefault(supplier.id, {})[s.product_id] = s.suggested_quantity
+    groups = sorted(by_supplier.items())
+    if groups:
+        sent = _new_purchase(db, *groups[0], note="Pedido semanal")
+        purchase_service.send_purchase(db, sent.id)
+    if len(groups) > 1:
+        _new_purchase(db, *groups[1], note="Conferir preço antes de enviar")
+
+
 def seed_history(db: Session) -> None:
     """Simula a operação da loja. Só roda com o banco sem pedidos (idempotência)."""
     if db.scalar(select(func.count()).select_from(Order)):
@@ -174,8 +264,7 @@ def seed_history(db: Session) -> None:
         if not lines:
             continue
         if restock:
-            ids = _purchase(db, list(restock), restock, "Reposição do fornecedor")
-            _backdate(db, when - timedelta(hours=2), movement_ids=ids)
+            _restock(db, restock, when - timedelta(hours=2))
 
         data = OrderCreate(
             customer_id=rng.choice(customer_ids),
@@ -202,7 +291,10 @@ def seed_history(db: Session) -> None:
 
 def seed(db: Session) -> None:
     seed_catalog(db)
-    seed_history(db)
+    _seed_suppliers(db)
+    if not db.scalar(select(func.count()).select_from(Order)):
+        seed_history(db)
+        _open_purchases(db)
 
 
 def main() -> None:

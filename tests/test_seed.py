@@ -1,8 +1,18 @@
 import pytest
 from sqlalchemy import case, func, select
 
-from app.models import Customer, Order, OrderStatus, Product, StockMovement
-from app.seed import CUSTOMERS, NO_RESTOCK, PRODUCTS, seed
+from app.models import (
+    Customer,
+    MovementReason,
+    Order,
+    OrderStatus,
+    Product,
+    PurchaseOrder,
+    PurchaseStatus,
+    StockMovement,
+    Supplier,
+)
+from app.seed import CUSTOMERS, NO_RESTOCK, PRODUCTS, SUPPLIERS, seed
 
 
 @pytest.fixture
@@ -50,3 +60,13 @@ def test_history_is_spread_over_time(seeded):
 def test_some_products_end_low_on_stock(seeded):
     low = set(seeded.scalars(select(Product.sku).where(Product.stock_quantity <= Product.min_stock)))
     assert low and low <= NO_RESTOCK
+
+
+def test_seed_reposicoes_viram_compras_e_deixa_compras_abertas(seeded):
+    assert count(seeded, Supplier) == len(set(SUPPLIERS.values()))
+    assert count(seeded, PurchaseOrder, PurchaseOrder.status == PurchaseStatus.RECEIVED) > 0
+    # Toda entrada por compra (fora o estoque inicial) aponta para o pedido de compra
+    loose = StockMovement.reason == MovementReason.PURCHASE, StockMovement.purchase_order_id.is_(None)
+    assert count(seeded, StockMovement, *loose, StockMovement.note != "Estoque inicial") == 0
+    assert count(seeded, PurchaseOrder, PurchaseOrder.status == PurchaseStatus.ORDERED) == 1
+    assert count(seeded, PurchaseOrder, PurchaseOrder.status == PurchaseStatus.DRAFT) == 1

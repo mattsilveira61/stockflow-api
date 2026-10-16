@@ -4,6 +4,7 @@ from app.models.customer import Customer
 from app.models.order import Order, OrderStatus
 from app.models.order_item import OrderItem
 from app.models.product import Product
+from app.models.purchase import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, Supplier
 from app.models.stock_movement import MovementReason, MovementType, StockMovement
 
 __all__ = [
@@ -15,5 +16,9 @@ __all__ = [
     "OrderItem",
     "OrderStatus",
     "Product",
+    "PurchaseOrder",
+    "PurchaseOrderItem",
+    "PurchaseStatus",
     "StockMovement",
+    "Supplier",
 ]

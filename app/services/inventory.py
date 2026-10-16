@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core import clock
 from app.core.errors import ConflictError
-from app.models import MovementReason, MovementType, Order, Product, StockMovement
+from app.models import MovementReason, MovementType, Order, Product, PurchaseOrder, StockMovement
 from app.schemas.common import PageParams, paginate
 from app.schemas.stock_movement import MovementCreate, MovementFilters
 from app.services.catalog import get_product
@@ -38,6 +38,7 @@ def move_stock(
     reason: MovementReason,
     *,
     order: Order | None = None,
+    purchase_order: PurchaseOrder | None = None,
     note: str | None = None,
 ) -> StockMovement:
     """Aplica a movimentação a um produto já travado por `lock_products`. Não faz commit."""
@@ -51,6 +52,7 @@ def move_stock(
     movement = StockMovement(
         product=product,
         order=order,
+        purchase_order=purchase_order,
         movement_type=movement_type,
         reason=reason,
         quantity=quantity,

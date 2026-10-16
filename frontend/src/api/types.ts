@@ -40,6 +40,7 @@ export interface Movement {
   id: number;
   product_id: number;
   order_id: number | null;
+  purchase_order_id: number | null;
   movement_type: MovementType;
   reason: MovementReason;
   quantity: number;
@@ -84,6 +85,53 @@ export interface OrderItem {
 
 export interface Order extends OrderSummary {
   items: OrderItem[];
+}
+
+export interface Supplier {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PurchaseStatus = "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
+
+export interface PurchaseSummary {
+  id: number;
+  supplier_id: number;
+  supplier_name: string;
+  status: PurchaseStatus;
+  total_cost: Money;
+  note: string | null;
+  ordered_at: string | null;
+  received_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PurchaseItem {
+  product_id: number;
+  sku: string;
+  name: string;
+  quantity: number;
+  unit_cost: Money;
+  subtotal: Money;
+}
+
+export interface Purchase extends PurchaseSummary {
+  items: PurchaseItem[];
+}
+
+export interface RestockSuggestion {
+  product_id: number;
+  sku: string;
+  name: string;
+  stock_quantity: number;
+  min_stock: number;
+  suggested_quantity: number;
 }
 
 export interface Dashboard {

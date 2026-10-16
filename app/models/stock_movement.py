@@ -8,6 +8,7 @@ from app.db.session import Base
 from app.models.base import enum_check
 from app.models.order import Order
 from app.models.product import Product
+from app.models.purchase import PurchaseOrder
 
 
 class MovementType(StrEnum):
@@ -38,6 +39,7 @@ class StockMovement(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     order_id: Mapped[int | None] = mapped_column(ForeignKey("orders.id"), index=True)
+    purchase_order_id: Mapped[int | None] = mapped_column(ForeignKey("purchase_orders.id"), index=True)
     movement_type: Mapped[MovementType] = mapped_column(String(10))
     reason: Mapped[MovementReason] = mapped_column(String(20))
     quantity: Mapped[int]
@@ -48,3 +50,4 @@ class StockMovement(Base):
 
     product: Mapped[Product] = relationship()
     order: Mapped[Order | None] = relationship()
+    purchase_order: Mapped[PurchaseOrder | None] = relationship()

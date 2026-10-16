@@ -12,10 +12,14 @@ import { DashboardPage } from "./pages/Dashboard";
 import { MovementsPage } from "./pages/Movements";
 import { NewOrderPage } from "./pages/NewOrder";
 import { OrderDetailPage } from "./pages/OrderDetail";
+import { NewPurchasePage } from "./pages/NewPurchase";
 import { OrdersPage } from "./pages/Orders";
 import { ProductDetailPage } from "./pages/ProductDetail";
 import { ProductsPage } from "./pages/Products";
+import { PurchaseDetailPage } from "./pages/PurchaseDetail";
+import { PurchasesPage } from "./pages/Purchases";
 import { SoonPage } from "./pages/Soon";
+import { SuppliersPage } from "./pages/Suppliers";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +46,10 @@ createRoot(document.getElementById("root")!).render(
               <Route path="pedidos" element={<OrdersPage />} />
               <Route path="pedidos/novo" element={<NewOrderPage />} />
               <Route path="pedidos/:id" element={<OrderDetailPage />} />
+              <Route path="compras" element={<PurchasesPage />} />
+              <Route path="compras/nova" element={<NewPurchasePage />} />
+              <Route path="compras/:id" element={<PurchaseDetailPage />} />
+              <Route path="fornecedores" element={<SuppliersPage />} />
               <Route path="clientes" element={<CustomersPage />} />
               <Route path="categorias" element={<CategoriesPage />} />
               <Route path="*" element={<SoonPage title="Página não encontrada" />} />

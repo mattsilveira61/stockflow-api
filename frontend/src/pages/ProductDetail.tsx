@@ -192,6 +192,10 @@ export function MovementTable({ movements, showProduct }: { movements: (Movement
                   <Link to={`/pedidos/${m.order_id}`} className="num text-signal-ink hover:underline">
                     Pedido #{m.order_id}
                   </Link>
+                ) : m.purchase_order_id ? (
+                  <Link to={`/compras/${m.purchase_order_id}`} className="num text-signal-ink hover:underline">
+                    {m.note ?? `Compra #${m.purchase_order_id}`}
+                  </Link>
                 ) : (
                   (m.note ?? "—")
                 )}

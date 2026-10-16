@@ -29,6 +29,7 @@ class MovementOut(BaseModel):
     id: int
     product_id: int
     order_id: int | None
+    purchase_order_id: int | None
     movement_type: MovementType
     reason: MovementReason
     quantity: int

@@ -31,6 +31,8 @@ O foco vai além do CRUD: o projeto trata **integridade dos dados**. O estoque n
 | Preço do produto muda depois da venda | O item guarda o `unit_price` da época; o total é sempre calculado no backend |
 | Saldo alterado "por fora" | `stock_quantity` não aceita escrita pela API de produto; só `services/inventory.move_stock` altera o saldo |
 | Bug no código deixando saldo negativo | `CHECK (stock_quantity >= 0)` no banco como última linha de defesa |
+| Mercadoria recebida duas vezes (clique duplo, duas abas) | Pedido de compra com status `DRAFT → ORDERED → RECEIVED`; receber é um `UPDATE ... WHERE status='ORDERED'`: só um recebimento dá entrada no estoque |
+| Comprar de novo o que já está a caminho | A sugestão de reposição desconta as compras enviadas e ainda não recebidas |
 | Dinheiro com erro de arredondamento | `NUMERIC(12,2)` no banco e `Decimal` no Python, nunca `float` |
 | Busca que exige acento ("feijao" não acha "Feijão") | Extensão `unaccent` do PostgreSQL na busca de produtos e clientes |
 | "Dia" do relatório no fuso errado (UTC) | Agrupamento e filtros por dia no fuso da loja (`America/Sao_Paulo`) |
@@ -51,7 +53,8 @@ Interface no estilo de painel administrativo, com tema claro e escuro, que se ad
 - **Modo leitura sem chave:** qualquer visitante navega por tudo. Para criar ou alterar dados, clique em **Entrar** e informe a `API_KEY` (conferida pela API em `POST /auth/verify` e guardada só na aba, no `sessionStorage`).
 - **Erros da API na tela certa:** "SKU já existe" aparece embaixo do campo SKU, e "estoque insuficiente" aparece no carrinho sem perder os itens.
 - **Sem CORS:** o painel chama `/api/...`. No desenvolvimento o Vite repassa para a API; no Docker quem faz isso é o nginx.
-- **Testes e2e** com Playwright cobrindo os fluxos principais: criar produto → entrada → saída recusada; pedido → baixa → cancelamento → devolução; carrinho sem estoque.
+- **Compras:** fornecedores, pedidos de compra com sugestão de reposição e recebimento que dá entrada no estoque; cada movimentação mostra de qual compra veio.
+- **Testes e2e** com Playwright cobrindo os fluxos principais: criar produto → entrada → saída recusada; pedido → baixa → cancelamento → devolução; compra → envio → recebimento → entrada; carrinho sem estoque.
 
 ## Modelo de dados
 
@@ -63,6 +66,10 @@ erDiagram
     products ||--o{ order_items : "aparece em"
     products ||--o{ stock_movements : "tem histórico"
     orders |o--o{ stock_movements : gera
+    suppliers ||--o{ purchase_orders : recebe
+    purchase_orders ||--|{ purchase_order_items : tem
+    products ||--o{ purchase_order_items : "aparece em"
+    purchase_orders |o--o{ stock_movements : gera
 
     categories {
         int id PK
@@ -99,6 +106,7 @@ erDiagram
         int id PK
         int product_id FK
         int order_id FK "opcional"
+        int purchase_order_id FK "opcional"
         varchar movement_type "IN | OUT"
         varchar reason "PURCHASE | ADJUSTMENT | SALE | CANCELLATION"
         int quantity "CHECK > 0"
@@ -187,6 +195,14 @@ As consultas (`GET`) são públicas. Para criar ou alterar dados, envie a chave 
 | `GET` `POST` | `/orders` | Listar (cliente, status, datas) / criar pedido |
 | `GET` | `/orders/{id}` | Pedido com itens |
 | `POST` | `/orders/{id}/cancel` | Cancelar e devolver o estoque |
+| `GET` `POST` | `/suppliers` | Listar (busca `q`, `active`) / criar fornecedores |
+| `GET` `PATCH` | `/suppliers/{id}` | Consultar / alterar ou desativar |
+| `GET` `POST` | `/purchases` | Listar (fornecedor, status) / criar pedido de compra (rascunho) |
+| `GET` `PATCH` | `/purchases/{id}` | Compra com itens / editar o rascunho |
+| `POST` | `/purchases/{id}/send` | Rascunho → enviado ao fornecedor |
+| `POST` | `/purchases/{id}/receive` | Enviado → recebido: dá entrada de todos os itens numa transação |
+| `POST` | `/purchases/{id}/cancel` | Cancela rascunho ou enviado (recebido não cancela) |
+| `GET` | `/purchases/suggestions` | Sugestão de reposição: produtos abaixo do mínimo, descontando o que está a caminho |
 | `GET` | `/reports/low-stock` | Produtos ativos no estoque mínimo ou abaixo |
 | `GET` | `/movements` | Histórico geral (produto, tipo, motivo, datas) |
 | `GET` | `/dashboard?days=30` | Indicadores, vendas por dia, mais vendidos e últimas movimentações |
