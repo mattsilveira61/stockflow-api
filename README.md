@@ -9,6 +9,11 @@
 
 Sistema de estoque e pedidos de uma pequena loja: **API REST** em FastAPI + PostgreSQL e **painel web** em React.
 
+**🔗 Demonstração: [stockflow-api-three.vercel.app](https://stockflow-api-three.vercel.app)** — entre com um dos
+botões de demonstração (administrador, operador ou leitor). A API fica no plano grátis do Render, que dorme sem uso:
+a primeira visita pode levar até 1 minuto. API: [stockflow-api-es48.onrender.com/docs](https://stockflow-api-es48.onrender.com/docs).
+Hospedagem: Vercel (painel), Render (API em Docker) e Neon (PostgreSQL), todos no plano grátis.
+
 ![Dashboard do StockFlow](docs/screenshots/dashboard-light.png)
 
 O foco vai além do CRUD: o projeto trata **integridade dos dados**. O estoque nunca fica negativo, nem quando vários pedidos disputam as últimas unidades ao mesmo tempo. Pedidos e cancelamentos são atômicos e toda mudança de saldo fica registrada num histórico auditável.
