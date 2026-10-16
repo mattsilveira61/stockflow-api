@@ -51,6 +51,8 @@ Interface no estilo de painel administrativo, com tema claro e escuro, que se ad
 | **Dashboard:** faturamento, pedidos, valor em estoque, alertas de estoque baixo, vendas por dia e mais vendidos | **Novo pedido:** busca sem acento, total ao vivo, aviso de item acima do estoque e `Idempotency-Key` automática |
 | ![Detalhe do produto](docs/screenshots/product-detail.png) | ![Lista de produtos](docs/screenshots/products.png) |
 | **Produto:** gráfico do saldo ao longo do tempo (a partir do `balance_after`) e histórico auditável | **Produtos:** busca, filtros e ordenação guardados na URL, com selo de estoque ok/baixo/zerado |
+| ![Nova compra com sugestão de reposição](docs/screenshots/new-purchase.png) | ![Tela de login](docs/screenshots/login.png) |
+| **Nova compra:** a sugestão de reposição entra com um clique; o estoque só sobe no recebimento | **Login:** um botão para cada perfil de demonstração (administrador, operador e leitor) |
 
 - **Login com perfis:** `LEITOR` só consulta; `OPERADOR` também registra pedidos, movimentações, compras, clientes e fornecedores; `ADMIN` também cuida do catálogo e dos usuários. Os botões que o perfil não pode usar ficam desabilitados com a explicação, mas quem decide é a API (`403`). A tela de login tem um botão para cada usuário de demonstração.
 - **Erros da API na tela certa:** "SKU já existe" aparece embaixo do campo SKU, e "estoque insuficiente" aparece no carrinho sem perder os itens.
