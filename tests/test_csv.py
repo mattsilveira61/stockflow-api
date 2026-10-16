@@ -77,8 +77,9 @@ def test_exporta_movimentacoes_no_fuso_da_loja(client, db, mercearia):
     assert len(row["data"]) == 16 and row["data"][2] == "/"  # dd/mm/aaaa hh:mm
 
 
-def test_exportar_e_livre_sem_chave(anon_client):
-    assert anon_client.get("/products/export.csv").status_code == 200
+def test_exportar_exige_login_mas_leitor_pode(anon_client, reader_client):
+    assert anon_client.get("/products/export.csv").status_code == 401
+    assert reader_client.get("/products/export.csv").status_code == 200
 
 
 # ---- Importação ---------------------------------------------------------------------
@@ -163,6 +164,7 @@ def test_arquivo_grande_demais(client):
     assert upload(client, HEADER + "x" * 1_000_001).json()["error"]["message"] == "Arquivo maior que 1 MB"
 
 
-def test_importar_exige_chave(anon_client):
+def test_importar_e_so_do_admin(anon_client, operator_client):
     files = {"file": ("p.csv", HEADER.encode(), "text/csv")}
     assert anon_client.post("/products/import", files=files).status_code == 401
+    assert operator_client.post("/products/import", files=files).status_code == 403

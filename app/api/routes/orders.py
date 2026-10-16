@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Header, Query, Response, status
 
-from app.api.deps import DbSession
+from app.api.deps import OPERATOR, DbSession
 from app.schemas.common import Page, error_responses, write_responses
 from app.schemas.order import OrderCreate, OrderFilters, OrderOut, OrderSummary
 from app.services import orders
@@ -16,7 +16,7 @@ def list_orders(db: DbSession, filters: Annotated[OrderFilters, Query()]):
 
 
 @router.post(
-    "",
+    "", dependencies=OPERATOR,
     response_model=OrderOut,
     status_code=status.HTTP_201_CREATED,
     responses={200: {"model": OrderOut, "description": "Pedido já criado com essa Idempotency-Key"}}
@@ -44,7 +44,7 @@ def get_order(db: DbSession, order_id: int):
     return orders.get_order(db, order_id)
 
 
-@router.post("/{order_id}/cancel", response_model=OrderOut, responses=write_responses(404, 409))
+@router.post("/{order_id}/cancel", dependencies=OPERATOR, response_model=OrderOut, responses=write_responses(404, 409))
 def cancel_order(db: DbSession, order_id: int):
     """Cancela e devolve o estoque. Cancelar de novo responde 409 e não devolve nada."""
     return orders.cancel_order(db, order_id)

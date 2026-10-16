@@ -2,8 +2,9 @@ import { useMutation } from "@tanstack/react-query";
 import clsx from "clsx";
 import { FileUp, Upload } from "lucide-react";
 import { useState } from "react";
-import { ApiError, csvExportUrl, uploadCsv } from "../api/client";
+import { ApiError, uploadCsv } from "../api/client";
 import { useInvalidate } from "../api/hooks";
+import { ExportButton } from "./ExportButton";
 import { FormError } from "./form";
 import { Modal, OverlayBody, OverlayFooter } from "./Overlay";
 import { useToast } from "./Toast";
@@ -75,9 +76,9 @@ function ImportForm({ onDone }: { onDone: () => void }) {
           <code className="num text-xs">estoque_minimo; ativo; descricao</code>. SKU que já existe é atualizado; o saldo de estoque
           nunca muda pela planilha.
         </p>
-        <a href={csvExportUrl("/products/export.csv")} className="text-sm text-signal-ink underline" download>
+        <ExportButton path="/products/export.csv" filename="produtos.csv" variant="link">
           Baixar a planilha atual como modelo
-        </a>
+        </ExportButton>
 
         <label
           className={clsx(

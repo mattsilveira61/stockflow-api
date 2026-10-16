@@ -72,8 +72,9 @@ def test_desativa_e_apaga_contato_do_fornecedor(client, supplier):
     assert client.get("/suppliers", params={"active": True}).json()["total"] == 0
 
 
-def test_escrita_de_fornecedor_exige_chave(anon_client):
-    assert anon_client.post("/suppliers", json={"name": "X"}).status_code == 401
+def test_operador_cadastra_fornecedor_e_leitor_nao(operator_client, reader_client):
+    assert reader_client.post("/suppliers", json={"name": "X"}).status_code == 403
+    assert operator_client.post("/suppliers", json={"name": "X"}).status_code == 201
 
 
 # ---- Rascunho -----------------------------------------------------------------------
@@ -193,9 +194,10 @@ def test_filtros_da_lista(client, db, supplier):
     assert client.get("/purchases", params={"supplier_id": other.id}).json()["total"] == 1
 
 
-def test_escrita_de_compra_exige_chave_mas_consulta_e_livre(anon_client):
-    assert anon_client.get("/purchases").status_code == 200
-    assert anon_client.post("/purchases/1/receive").status_code == 401
+def test_compra_exige_login_e_leitor_so_consulta(anon_client, reader_client):
+    assert anon_client.get("/purchases").status_code == 401
+    assert reader_client.get("/purchases").status_code == 200
+    assert reader_client.post("/purchases/1/receive").status_code == 403
 
 
 # ---- Sugestão de reposição ----------------------------------------------------------

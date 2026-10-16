@@ -1,12 +1,12 @@
 import logging
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import require_api_key_for_writes
+from app.api.deps import LOGGED_IN
 from app.api.routes import (
     auth,
     categories,
@@ -19,8 +19,9 @@ from app.api.routes import (
     purchases,
     reports,
     suppliers,
+    users,
 )
-from app.core.errors import AppError, UnauthorizedError
+from app.core.errors import AppError, TooManyRequestsError, UnauthorizedError
 
 logger = logging.getLogger("stockflow")
 
@@ -32,14 +33,19 @@ API REST de estoque e pedidos com foco em integridade dos dados.
 - Venda simultânea das últimas unidades é segura (lock de linha no PostgreSQL).
 - `Idempotency-Key` no `POST /orders` evita pedido duplicado em reenvios.
 
-**Consultas são livres. Para `POST` e `PATCH`, clique em _Authorize_ e informe a `X-API-Key`.**
+**Faça login em `POST /auth/login`, clique em _Authorize_ e cole o `access_token`.**
+
+- `LEITOR` só consulta.
+- `OPERADOR` também registra pedidos, movimentações, compras, clientes e fornecedores.
+- `ADMIN` também cuida do catálogo (categorias e produtos) e dos usuários.
+
+Usuários de demonstração: `admin@`, `operador@` e `leitor@stockflow.dev`.
 """
 
 app = FastAPI(
     title="StockFlow API",
     description=DESCRIPTION,
     version="1.0.0",
-    dependencies=[Depends(require_api_key_for_writes)],
 )
 
 
@@ -66,7 +72,9 @@ def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     # Erros com lista de detalhes (ex.: linhas recusadas na importação de CSV) vão em `details`
     response = error_response(exc.status_code, exc.code, exc.message, getattr(exc, "errors", None) or None)
     if isinstance(exc, UnauthorizedError):
-        response.headers["WWW-Authenticate"] = "ApiKey"
+        response.headers["WWW-Authenticate"] = "Bearer"
+    elif isinstance(exc, TooManyRequestsError):
+        response.headers["Retry-After"] = str(exc.retry_after)
     return response
 
 
@@ -85,12 +93,13 @@ def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONRespon
 
 app.include_router(health.router)
 app.include_router(auth.router)
-app.include_router(categories.router)
-app.include_router(products.router)
-app.include_router(customers.router)
-app.include_router(orders.router)
-app.include_router(movements.router)
-app.include_router(reports.router)
-app.include_router(dashboard.router)
-app.include_router(suppliers.router)
-app.include_router(purchases.router)
+app.include_router(categories.router, dependencies=LOGGED_IN)
+app.include_router(products.router, dependencies=LOGGED_IN)
+app.include_router(customers.router, dependencies=LOGGED_IN)
+app.include_router(orders.router, dependencies=LOGGED_IN)
+app.include_router(movements.router, dependencies=LOGGED_IN)
+app.include_router(reports.router, dependencies=LOGGED_IN)
+app.include_router(dashboard.router, dependencies=LOGGED_IN)
+app.include_router(suppliers.router, dependencies=LOGGED_IN)
+app.include_router(purchases.router, dependencies=LOGGED_IN)
+app.include_router(users.router)

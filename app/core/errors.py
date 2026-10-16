@@ -31,3 +31,21 @@ class ConflictError(AppError):
 
     status_code = 409
     code = "CONFLICT"
+
+
+class ForbiddenError(AppError):
+    """Logado, mas o perfil não pode fazer isso."""
+
+    status_code = 403
+    code = "FORBIDDEN"
+
+
+class TooManyRequestsError(AppError):
+    """Tentativas demais em pouco tempo; retry_after diz quantos segundos esperar."""
+
+    status_code = 429
+    code = "TOO_MANY_REQUESTS"
+
+    def __init__(self, message: str, retry_after: int):
+        super().__init__(message)
+        self.retry_after = retry_after

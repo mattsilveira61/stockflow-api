@@ -87,6 +87,17 @@ export interface Order extends OrderSummary {
   items: OrderItem[];
 }
 
+export type Role = "ADMIN" | "OPERADOR" | "LEITOR";
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+}
+
 export interface Supplier {
   id: number;
   name: string;

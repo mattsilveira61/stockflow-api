@@ -1,8 +1,6 @@
-import { expect, test } from "@playwright/test";
-import { API_KEY, login, uid } from "./helpers";
+import { expect, login, test, uid } from "./helpers";
 
 test.describe("produtos e estoque", () => {
-  test.skip(!API_KEY, "defina API_KEY para os testes de escrita");
 
   test("criar produto → entrada → saldo e histórico → saída acima do saldo é recusada", async ({ page }) => {
     const sku = `E2E-${uid()}`;
@@ -108,11 +106,8 @@ test.describe("produtos e estoque", () => {
   });
 });
 
-test("modo leitura: listas funcionam e botões de escrita ficam bloqueados", async ({ page }) => {
+test("lista de produtos: busca, filtro e ordenação ficam na URL", async ({ page }) => {
   await page.goto("/produtos");
-  await expect(page.getByRole("button", { name: "Novo produto" })).toBeDisabled();
-
-  // Busca, filtro e ordenação ficam na URL
   await page.getByLabel("Buscar por nome ou SKU").fill("água");
   await expect(page).toHaveURL(/q=%C3%A1gua/);
   await expect(page.getByRole("row").filter({ hasText: "Água mineral 500 ml" })).toBeVisible();
@@ -120,8 +115,6 @@ test("modo leitura: listas funcionam e botões de escrita ficam bloqueados", asy
   await expect(page).toHaveURL(/sort=unit_price/);
 
   await page.getByRole("row").filter({ hasText: "Água mineral 500 ml" }).getByRole("link").click();
-  await expect(page.getByRole("button", { name: "Entrada / Saída" })).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Editar" })).toBeDisabled();
   await expect(page.locator(".recharts-line-curve")).toBeVisible();
 });
 

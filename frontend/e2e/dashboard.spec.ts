@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers";
 
 test("dashboard mostra indicadores, gráficos e listas com dados reais", async ({ page }) => {
   await page.goto("/");
@@ -26,23 +26,70 @@ test("trocar o período recarrega os números", async ({ page }) => {
   await expect(revenue).not.toHaveText(before ?? "");
 });
 
-test("sem chave o painel fica em modo leitura; com chave errada mostra erro", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByText("Modo leitura").first()).toBeVisible();
-  await page.getByRole("button", { name: "Entrar", exact: true }).first().click();
-  await page.getByLabel("Chave de acesso").fill("chave-errada");
-  await page.getByRole("dialog").getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("dialog").getByRole("alert")).toHaveText(/Chave inválida/);
+test.describe("login", () => {
+  test.use({ who: null });
+
+  test("sem login só aparece a tela de entrar; senha errada mostra o erro", async ({ page }) => {
+    await page.goto("/produtos");
+    await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Principal" })).toHaveCount(0);
+    await page.getByLabel("E-mail").fill("admin@stockflow.dev");
+    await page.getByLabel("Senha").fill("errada");
+    await page.getByRole("button", { name: "Entrar", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText("E-mail ou senha inválidos");
+  });
+
+  test("usuário de demonstração entra com um clique e sai", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: /Operador/ }).click();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByText("Otávio Operador").first()).toBeVisible();
+    // Menu de usuários é só do admin
+    await expect(page.getByRole("link", { name: "Usuários" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Sair" }).first().click();
+    await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+  });
 });
 
-test("com a chave certa libera o acesso completo", async ({ page }) => {
-  test.skip(!process.env.API_KEY, "defina API_KEY para este teste");
-  await page.goto("/");
-  await page.getByRole("button", { name: "Entrar", exact: true }).first().click();
-  await page.getByLabel("Chave de acesso").fill(process.env.API_KEY!);
-  await page.getByRole("dialog").getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByText("Acesso completo").first()).toBeVisible();
-  await expect(page.getByRole("status").filter({ hasText: "Acesso liberado" })).toBeVisible();
+test.describe("leitor", () => {
+  test.use({ who: "leitor" });
+
+  test("vê tudo mas os botões de alterar ficam bloqueados", async ({ page }) => {
+    await page.goto("/produtos");
+    await expect(page.getByRole("button", { name: "Novo produto" })).toBeDisabled();
+    await page.getByRole("row").filter({ hasText: "Água mineral 500 ml" }).getByRole("link").click();
+    await expect(page.getByRole("button", { name: "Entrada / Saída" })).toBeDisabled();
+    await page.goto("/pedidos");
+    await expect(page.getByRole("button", { name: "Novo pedido" })).toBeDisabled();
+  });
+});
+
+test.describe("operador", () => {
+  test.use({ who: "operador" });
+
+  test("registra movimentação mas não altera o catálogo", async ({ page }) => {
+    await page.goto("/produtos");
+    await expect(page.getByRole("button", { name: "Novo produto" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Importar" })).toBeDisabled();
+    await page.getByRole("row").filter({ hasText: "Água mineral 500 ml" }).getByRole("link").click();
+    await expect(page.getByRole("button", { name: "Entrada / Saída" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Editar" })).toBeDisabled();
+  });
+});
+
+test("admin gerencia usuários", async ({ page }) => {
+  await page.goto("/usuarios");
+  await expect(page.getByRole("heading", { name: "Usuários" })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "leitor@stockflow.dev" })).toContainText("Leitor");
+  await page.getByRole("button", { name: "Novo usuário" }).click();
+  const drawer = page.getByRole("dialog", { name: "Novo usuário" });
+  await drawer.getByRole("button", { name: "Criar usuário" }).click();
+  await expect(drawer.getByText("Mínimo de 8 caracteres")).toBeVisible();
+  await drawer.getByLabel("Nome").fill("Duplicado");
+  await drawer.getByLabel("E-mail").fill("leitor@stockflow.dev");
+  await drawer.getByLabel("Senha").fill("12345678");
+  await drawer.getByRole("button", { name: "Criar usuário" }).click();
+  await expect(drawer.getByText("Já existe um usuário com esse e-mail")).toBeVisible();
 });
 
 test("tema escuro é lembrado ao recarregar", async ({ page }) => {

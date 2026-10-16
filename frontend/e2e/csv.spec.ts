@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { API_KEY, login, uid } from "./helpers";
+import { expect, login, test, uid, authHeaders } from "./helpers";
 
 /** Tira o BOM que a API põe no início para o Excel reconhecer o UTF-8. */
 const stripBom = (text: string) => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
@@ -12,7 +11,7 @@ test.describe("planilhas CSV", () => {
     await expect(page.getByRole("heading", { name: "Produtos" })).toBeVisible();
 
     const download = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Exportar" }).click();
+    await page.getByRole("button", { name: "Exportar", exact: true }).click();
     const file = await download;
     expect(file.suggestedFilename()).toBe("produtos.csv");
 
@@ -23,7 +22,6 @@ test.describe("planilhas CSV", () => {
   });
 
   test("importar mostra os erros por linha e depois grava com prévia", async ({ page }) => {
-    test.skip(!API_KEY, "defina API_KEY para os testes de escrita");
     await page.goto("/produtos");
     await login(page);
     const sku = `CSV-${uid()}`;
@@ -51,18 +49,18 @@ test.describe("planilhas CSV", () => {
     const preview = dialog.getByLabel("Prévia da importação");
     await expect(preview.getByText("Novos")).toBeVisible();
     await expect(preview.locator("dd").first()).toHaveText("1");
-    expect((await (await page.request.get(`/api/products?q=${sku}`)).json()).total).toBe(0);
+    expect((await (await page.request.get(`/api/products?q=${sku}`, { headers: await authHeaders(page.request) })).json()).total).toBe(0);
 
     await dialog.getByRole("button", { name: "Importar" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Importação concluída: 1 criado(s)" })).toBeVisible();
-    const created = (await (await page.request.get(`/api/products?q=${sku}`)).json()).items[0];
+    const created = (await (await page.request.get(`/api/products?q=${sku}`, { headers: await authHeaders(page.request) })).json()).items[0];
     expect([created.name, created.unit_price, created.min_stock, created.stock_quantity]).toEqual(["Produto CSV", "12.90", 4, 0]);
   });
 
   test("exportar movimentações respeita o filtro de motivo", async ({ page }) => {
     await page.goto("/movimentacoes?reason=SALE");
     const download = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Exportar CSV" }).click();
+    await page.getByRole("button", { name: "Exportar CSV" }).click();
     const text = (await (await (await download).createReadStream()).toArray()).join("");
     const rows = stripBom(text).trim().split("\r\n").slice(1);
     expect(rows.length).toBeGreaterThan(0);

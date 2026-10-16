@@ -52,7 +52,7 @@ Interface no estilo de painel administrativo, com tema claro e escuro, que se ad
 | ![Detalhe do produto](docs/screenshots/product-detail.png) | ![Lista de produtos](docs/screenshots/products.png) |
 | **Produto:** gráfico do saldo ao longo do tempo (a partir do `balance_after`) e histórico auditável | **Produtos:** busca, filtros e ordenação guardados na URL, com selo de estoque ok/baixo/zerado |
 
-- **Modo leitura sem chave:** qualquer visitante navega por tudo. Para criar ou alterar dados, clique em **Entrar** e informe a `API_KEY` (conferida pela API em `POST /auth/verify` e guardada só na aba, no `sessionStorage`).
+- **Login com perfis:** `LEITOR` só consulta; `OPERADOR` também registra pedidos, movimentações, compras, clientes e fornecedores; `ADMIN` também cuida do catálogo e dos usuários. Os botões que o perfil não pode usar ficam desabilitados com a explicação, mas quem decide é a API (`403`). A tela de login tem um botão para cada usuário de demonstração.
 - **Erros da API na tela certa:** "SKU já existe" aparece embaixo do campo SKU, e "estoque insuficiente" aparece no carrinho sem perder os itens.
 - **Sem CORS:** o painel chama `/api/...`. No desenvolvimento o Vite repassa para a API; no Docker quem faz isso é o nginx.
 - **Compras:** fornecedores, pedidos de compra com sugestão de reposição e recebimento que dá entrada no estoque; cada movimentação mostra de qual compra veio.
@@ -135,7 +135,13 @@ docker compose up --build
 
 Tudo sobe com as migrações aplicadas e com os dados de demonstração: 30 produtos, 10 clientes e 60 dias de operação simulada (cerca de 120 pedidos), para os gráficos terem o que mostrar. Para não criar os dados de demonstração, use `SEED_DEMO=false` no `.env`.
 
-A chave para o botão **Entrar** do painel é a `API_KEY` do `.env`.
+Usuários de demonstração (senha `DEMO_PASSWORD` do `.env`, `stockflow123` no exemplo):
+
+| E-mail | Perfil | Pode |
+|---|---|---|
+| `admin@stockflow.dev` | `ADMIN` | Tudo, inclusive catálogo e usuários |
+| `operador@stockflow.dev` | `OPERADOR` | Pedidos, movimentações, compras, clientes e fornecedores |
+| `leitor@stockflow.dev` | `LEITOR` | Só consulta |
 
 ### Local (para desenvolver)
 
@@ -160,7 +166,9 @@ npm run dev
 |---|---|
 | `DATABASE_URL` | Conexão do PostgreSQL usada pela API |
 | `TEST_DATABASE_URL` | Banco separado para os testes (é **apagado** a cada execução) |
-| `API_KEY` | Chave exigida no cabeçalho `X-API-Key` em `POST`/`PATCH` (mínimo 16 caracteres) |
+| `SECRET_KEY` | Assina os tokens de login (mínimo 32 caracteres) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Validade do login (padrão 480, um turno de trabalho) |
+| `DEMO_PASSWORD` | Senha dos usuários de demonstração criados pelo seed |
 | `POSTGRES_*` | Usuário, senha, banco e porta do contêiner do PostgreSQL |
 | `SEED_DEMO` | `false` para não criar os dados de demonstração no Docker |
 | `TIMEZONE` | Fuso dos relatórios e filtros por dia (padrão `America/Sao_Paulo`) |
@@ -172,18 +180,18 @@ npm run dev
 
 cd frontend
 npm run typecheck; npm run lint                       # painel
-$env:API_KEY="<sua chave>"; npx playwright test       # e2e (com a API no ar)
+npx playwright test                                   # e2e (com a API no ar)
 ```
 
-**API:** 123 testes de integração rodando contra o PostgreSQL real, porque locks e transações não se comportam igual em outros bancos. O banco de teste é recriado aplicando as migrações, o que testa as migrações também. Cada teste roda numa transação desfeita no final; a exceção são os testes de concorrência, que usam conexões reais e limpam os dados depois.
+**API:** 165 testes de integração rodando contra o PostgreSQL real, porque locks e transações não se comportam igual em outros bancos. O banco de teste é recriado aplicando as migrações, o que testa as migrações também. Cada teste roda numa transação desfeita no final; a exceção são os testes de concorrência, que usam conexões reais e limpam os dados depois.
 
-**Painel:** 17 testes e2e no navegador com Playwright, contra a API e o banco reais. Os que alteram dados só rodam com `API_KEY` definida.
+**Painel:** 25 testes e2e no navegador com Playwright, contra a API e o banco reais, entrando com os usuários de demonstração.
 
 O GitHub Actions roda dois jobs a cada push: `pytest` e o do painel (tipos, lint, build e e2e).
 
 ## Usando a API
 
-As consultas (`GET`) são públicas. Para criar ou alterar dados, envie a chave no cabeçalho `X-API-Key`. No `/docs`, clique em **Authorize**.
+Tudo exige login (só o `/health` é público). Entre em `POST /auth/login`, e envie o token em `Authorization: Bearer <token>`. No `/docs`, clique em **Authorize** e cole o `access_token`.
 
 | Método | Rota | Descrição |
 |---|---|---|
@@ -212,17 +220,25 @@ As consultas (`GET`) são públicas. Para criar ou alterar dados, envie a chave 
 | `GET` | `/reports/low-stock` | Produtos ativos no estoque mínimo ou abaixo |
 | `GET` | `/movements` | Histórico geral (produto, tipo, motivo, datas) |
 | `GET` | `/dashboard?days=30` | Indicadores, vendas por dia, mais vendidos e últimas movimentações |
-| `POST` | `/auth/verify` | Confere a `X-API-Key` sem alterar nada (`204` = válida) |
+| `POST` | `/auth/login` | E-mail e senha → token (5 erros por minuto bloqueiam com `429`) |
+| `GET` | `/auth/me` | Usuário dono do token |
+| `GET` `POST` | `/users` | Listar / criar usuários (só `ADMIN`) |
+| `GET` `PATCH` | `/users/{id}` | Consultar / alterar perfil, senha ou desativar (só `ADMIN`) |
 
 ### Exemplos
 
-Os exemplos usam os dados de demonstração. Troque `$KEY` pela sua `API_KEY`.
+Os exemplos usam os dados de demonstração. Primeiro, o login:
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8000/auth/login -H "Content-Type: application/json" \
+  -d '{"email": "operador@stockflow.dev", "password": "stockflow123"}' | jq -r .access_token)
+```
 
 **Entrada de estoque**
 
 ```bash
 curl -X POST localhost:8000/products/2/movements \
-  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"movement_type": "IN", "quantity": 30, "reason": "PURCHASE", "note": "NF 4512"}'
 ```
 
@@ -235,7 +251,7 @@ curl -X POST localhost:8000/products/2/movements \
 
 ```bash
 curl -X POST localhost:8000/orders \
-  -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -H "Idempotency-Key: pedido-0001" \
   -d '{"customer_id": 1, "items": [{"product_id": 1, "quantity": 3}, {"product_id": 4, "quantity": 1}]}'
 ```
@@ -264,7 +280,8 @@ Todos os erros seguem o mesmo formato:
 
 | Status | Quando |
 |---|---|
-| `401` | `X-API-Key` ausente ou inválida |
+| `401` | Sem login, ou token inválido, vencido ou de usuário desativado |
+| `403` | Perfil sem permissão (ex.: `LEITOR` tentando criar pedido) |
 | `404` | Recurso não existe |
 | `409` | Regra de negócio: SKU/e-mail repetido, estoque insuficiente, pedido já cancelado, produto desativado |
 | `422` | Dados inválidos (`details` traz o campo e o motivo) |
@@ -299,10 +316,10 @@ frontend/
 - **Enums como `VARCHAR + CHECK`.** São mais fáceis de evoluir em migrações que o `ENUM` nativo do PostgreSQL.
 - **Estado do servidor no TanStack Query.** Cada tela declara o que lê; depois de uma venda ou movimentação, as consultas que dependem do saldo (produtos, dashboard, estoque baixo, histórico) são invalidadas juntas.
 - **Filtros na URL.** Busca, filtros, ordenação e página ficam no endereço: recarregar ou compartilhar o link mantém a mesma visão.
-- **API key, não JWT.** Para uma API de demonstração, uma chave simples protege as escritas sem o peso de um sistema de usuários. Login com JWT e perfis está no meu outro projeto, o [HelpBoard](https://github.com/mattsilveira61/helpboard).
+- **JWT que guarda só o id do usuário.** O perfil e a situação são lidos do banco a cada requisição: desativar alguém ou trocar o perfil vale na hora, sem esperar o token vencer. A senha usa bcrypt, e o login confere uma senha falsa quando o e-mail não existe, para o tempo de resposta não revelar quem está cadastrado.
 
 ## Limitações conhecidas
 
-- Uma única chave de API para todas as escritas, sem usuários nem perfis.
+- O limite de tentativas de login fica na memória da API: vale para uma instância só.
 - Lista de clientes no filtro de pedidos e no carrinho limitada a 100 (suficiente para a demonstração).
 - Pedidos só têm os estados `CONFIRMED` e `CANCELLED`; não há pagamento nem entrega.

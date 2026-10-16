@@ -13,8 +13,11 @@ class Settings(BaseSettings):
 
     database_url: str
     test_database_url: str | None = None
-    # Chave exigida no cabeçalho X-API-Key para criar e alterar dados (consultas são livres).
-    api_key: str = Field(min_length=16)
+    # Assina os tokens de login. Gere uma: python -c "import secrets;print(secrets.token_urlsafe(48))"
+    secret_key: str = Field(min_length=32)
+    access_token_expire_minutes: int = 480
+    # Senha dos usuários de demonstração criados pelo seed
+    demo_password: str | None = None
     # Fuso usado para "dia" em filtros e gráficos (o banco guarda tudo em UTC).
     timezone: str = "America/Sao_Paulo"
 

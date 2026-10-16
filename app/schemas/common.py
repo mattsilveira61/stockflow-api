@@ -71,17 +71,20 @@ def text_search(term: str, *columns) -> ColumnElement[bool]:
 
 
 _ERROR_DESCRIPTIONS = {
-    401: "X-API-Key ausente ou inválida",
+    401: "Sem login, ou token inválido ou expirado",
+    403: "Perfil sem permissão para a ação",
     404: "Recurso não encontrado",
     409: "Regra de negócio violada",
     422: "Dados inválidos (detalhes por campo ou por linha em `details`)",
+    429: "Tentativas demais; veja o cabeçalho Retry-After",
 }
 
 
 def error_responses(*codes: int) -> dict[int | str, dict[str, Any]]:
-    """Documenta no Swagger os erros que uma rota pode devolver (rotas de escrita também podem dar 401)."""
+    """Documenta no Swagger os erros que uma rota pode devolver."""
     return {code: {"model": ErrorOut, "description": _ERROR_DESCRIPTIONS[code]} for code in codes}
 
 
 def write_responses(*codes: int) -> dict[int | str, dict[str, Any]]:
-    return error_responses(401, *codes)
+    """Rotas de escrita também podem responder 403 (perfil sem permissão)."""
+    return error_responses(403, *codes)

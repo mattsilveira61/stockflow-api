@@ -1,9 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
-import { API_KEY, login, uid } from "./helpers";
+import type { Page } from "@playwright/test";
+import { expect, login, test, uid, authHeaders } from "./helpers";
 
 /** Saldo atual de um produto direto pela API (o proxy /api do Vite). */
 async function stockOf(page: Page, sku: string) {
-  const res = await page.request.get(`/api/products?q=${sku}`);
+  const res = await page.request.get(`/api/products?q=${sku}`, { headers: await authHeaders(page.request) });
   const item = (await res.json()).items.find((p: { sku: string }) => p.sku === sku);
   return item.stock_quantity as number;
 }
@@ -15,7 +15,6 @@ async function addToCart(page: Page, search: string, optionName: RegExp) {
 }
 
 test.describe("pedidos", () => {
-  test.skip(!API_KEY, "defina API_KEY para os testes de escrita");
 
   test("criar pedido baixa o estoque; cancelar devolve; cancelar de novo não é possível", async ({ page }) => {
     await page.goto("/pedidos");
@@ -60,7 +59,7 @@ test.describe("pedidos", () => {
 
     // Cancelar de novo pela API: 409, estoque não muda (a tela já nem oferece o botão)
     const orderId = page.url().split("/").pop();
-    const again = await page.request.post(`/api/orders/${orderId}/cancel`, { headers: { "X-API-Key": API_KEY } });
+    const again = await page.request.post(`/api/orders/${orderId}/cancel`, { headers: await authHeaders(page.request) });
     expect(again.status()).toBe(409);
     expect((await again.json()).error.code).toBe("ORDER_ALREADY_CANCELLED");
     expect(await stockOf(page, "BEB-001")).toBe(beforeAgua);

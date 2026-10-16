@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import DbSession
+from app.api.deps import ADMIN, OPERATOR, DbSession
 from app.schemas.common import Page, PageParams, error_responses, write_responses
 from app.schemas.product import ProductCreate, ProductFilters, ProductImportResult, ProductOut, ProductUpdate
 from app.schemas.stock_movement import MovementCreate, MovementOut
@@ -27,7 +27,7 @@ def export_products(db: DbSession, filters: Annotated[ProductFilters, Query()]):
     )
 
 
-@router.post("/import", response_model=ProductImportResult, responses=write_responses(422))
+@router.post("/import", dependencies=ADMIN, response_model=ProductImportResult, responses=write_responses(422))
 def import_products(
     db: DbSession,
     file: Annotated[UploadFile, File(description="Planilha CSV de produtos")],
@@ -41,7 +41,13 @@ def import_products(
     return csv_io.import_products(db, file.file.read(csv_io.MAX_IMPORT_BYTES + 1), dry_run=dry_run)
 
 
-@router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED, responses=write_responses(404, 409))
+@router.post(
+    "",
+    dependencies=ADMIN,
+    response_model=ProductOut,
+    status_code=status.HTTP_201_CREATED,
+    responses=write_responses(404, 409),
+)
 def create_product(db: DbSession, data: ProductCreate):
     """O produto nasce com saldo 0; o estoque entra por `POST /products/{id}/movements`."""
     return catalog.create_product(db, data)
@@ -52,7 +58,7 @@ def get_product(db: DbSession, product_id: int):
     return catalog.get_product(db, product_id)
 
 
-@router.patch("/{product_id}", response_model=ProductOut, responses=write_responses(404, 409))
+@router.patch("/{product_id}", dependencies=ADMIN, response_model=ProductOut, responses=write_responses(404, 409))
 def update_product(db: DbSession, product_id: int, data: ProductUpdate):
     """Altera os dados cadastrais ou desativa (`is_active: false`). O saldo não pode ser alterado aqui."""
     return catalog.update_product(db, product_id, data)
@@ -60,6 +66,7 @@ def update_product(db: DbSession, product_id: int, data: ProductUpdate):
 
 @router.post(
     "/{product_id}/movements",
+    dependencies=OPERATOR,
     response_model=MovementOut,
     status_code=status.HTTP_201_CREATED,
     responses=write_responses(404, 409),

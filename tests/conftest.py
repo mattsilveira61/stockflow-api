@@ -9,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from alembic import command
 from app.core.config import ROOT_DIR, get_settings
+from app.core.rate_limit import login_limiter
+from app.core.security import create_access_token, hash_password
 from app.db.session import get_db
 from app.main import app
-from app.models import Category, Customer, Product
+from app.models import Category, Customer, Product, Role, User
 
 _seq = count(1)
 
@@ -44,22 +46,64 @@ def db(engine):
     conn.close()
 
 
+PASSWORD = "senha-de-teste-123"
+
+
+def create_user(db: Session, role: Role, email: str | None = None, **kw) -> User:
+    user = User(
+        name=kw.pop("name", f"Usuário {role.value.title()}"),
+        email=email or f"{role.value.lower()}{next(_seq)}@teste.dev",
+        role=role,
+        password_hash=hash_password(PASSWORD),
+        **kw,
+    )
+    db.add(user)
+    db.commit()
+    return user
+
+
+def auth_header(user: User) -> dict[str, str]:
+    return {"Authorization": f"Bearer {create_access_token(user.id)}"}
+
+
 @pytest.fixture
-def client(db):
-    """Cliente já autenticado: manda a X-API-Key em toda requisição."""
+def api(db):
+    """Liga a API à sessão do teste; cada cliente abaixo só muda o cabeçalho de login."""
     app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app, headers={"X-API-Key": get_settings().api_key}) as c:
-        yield c
+    login_limiter.clear()
+    yield
     app.dependency_overrides.clear()
 
 
 @pytest.fixture
-def anon_client(db):
-    """Cliente sem chave, para testar o que é público e o que é protegido."""
-    app.dependency_overrides[get_db] = lambda: db
+def admin(db) -> User:
+    return create_user(db, Role.ADMIN)
+
+
+@pytest.fixture
+def client(api, admin):
+    """Logado como ADMIN, que pode tudo: o cliente padrão dos testes de regra de negócio."""
+    with TestClient(app, headers=auth_header(admin)) as c:
+        yield c
+
+
+@pytest.fixture
+def operator_client(api, db):
+    with TestClient(app, headers=auth_header(create_user(db, Role.OPERADOR))) as c:
+        yield c
+
+
+@pytest.fixture
+def reader_client(api, db):
+    with TestClient(app, headers=auth_header(create_user(db, Role.LEITOR))) as c:
+        yield c
+
+
+@pytest.fixture
+def anon_client(api):
+    """Sem login, para testar o que é protegido (e o 500 genérico, sem relançar a exceção)."""
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
-    app.dependency_overrides.clear()
 
 
 # ---- Fábricas de dados -------------------------------------------------------------

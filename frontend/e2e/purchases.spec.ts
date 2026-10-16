@@ -1,14 +1,13 @@
-import { expect, test, type Page } from "@playwright/test";
-import { API_KEY, login, uid } from "./helpers";
+import type { Page } from "@playwright/test";
+import { expect, login, test, uid, authHeaders } from "./helpers";
 
 async function stockOf(page: Page, sku: string) {
-  const res = await page.request.get(`/api/products?q=${sku}`);
+  const res = await page.request.get(`/api/products?q=${sku}`, { headers: await authHeaders(page.request) });
   const item = (await res.json()).items.find((p: { sku: string }) => p.sku === sku);
   return item.stock_quantity as number;
 }
 
 test.describe("compras", () => {
-  test.skip(!API_KEY, "defina API_KEY para os testes de escrita");
 
   test("rascunho → enviar → receber dá entrada no estoque uma vez só", async ({ page }) => {
     await page.goto("/compras");
@@ -63,7 +62,7 @@ test.describe("compras", () => {
 
     // Receber de novo pela API também não duplica
     const id = page.url().split("/").pop();
-    const again = await page.request.post(`/api/purchases/${id}/receive`, { headers: { "X-API-Key": API_KEY } });
+    const again = await page.request.post(`/api/purchases/${id}/receive`, { headers: await authHeaders(page.request) });
     expect(again.status()).toBe(409);
     expect(await stockOf(page, "MER-001")).toBe(before + 12);
 
@@ -72,12 +71,11 @@ test.describe("compras", () => {
     await expect(page.getByRole("link", { name: `Compra #${id} · ${supplier}` }).first()).toBeVisible();
   });
 
-  test("lista filtra por status e modo leitura não cria compra", async ({ page }) => {
+  test("lista filtra por status", async ({ page }) => {
     await page.goto("/compras?status=ORDERED");
     await expect(page.getByRole("heading", { name: "Pedidos de compra" })).toBeVisible();
     await expect(page.getByLabel("Status")).toHaveValue("ORDERED");
     const badges = page.locator("tbody").getByText(/Rascunho|Recebido|Cancelado/);
     await expect(badges).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Nova compra" })).toBeDisabled();
   });
 });

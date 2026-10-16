@@ -20,6 +20,7 @@ import { PurchaseDetailPage } from "./pages/PurchaseDetail";
 import { PurchasesPage } from "./pages/Purchases";
 import { SoonPage } from "./pages/Soon";
 import { SuppliersPage } from "./pages/Suppliers";
+import { UsersPage } from "./pages/Users";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
               <Route path="fornecedores" element={<SuppliersPage />} />
               <Route path="clientes" element={<CustomersPage />} />
               <Route path="categorias" element={<CategoriesPage />} />
+              <Route path="usuarios" element={<UsersPage />} />
               <Route path="*" element={<SoonPage title="Página não encontrada" />} />
             </Route>
           </Routes>

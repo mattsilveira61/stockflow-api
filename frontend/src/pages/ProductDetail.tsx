@@ -57,7 +57,7 @@ export function ProductDetailPage() {
         title={p.name}
         actions={
           <>
-            <WriteGuard>
+            <WriteGuard need="admin">
               <Button variant="ghost" icon={Pencil} onClick={() => setEditing(true)}>
                 Editar
               </Button>

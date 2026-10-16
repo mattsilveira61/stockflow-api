@@ -1,8 +1,8 @@
+import { useQueryClient } from "@tanstack/react-query";
 import clsx from "clsx";
 import {
   ArrowLeftRight,
   Boxes,
-  KeyRound,
   LayoutDashboard,
   Lock,
   LogOut,
@@ -12,15 +12,16 @@ import {
   Sun,
   Tags,
   Truck,
+  UserCog,
   Users,
   ClipboardList,
   X,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
-import { setApiKey, useCanWrite } from "../lib/session";
+import { ROLE_LABEL, setSession, takeExpired, useCan, useSession } from "../lib/session";
 import { toggleTheme, useDarkMode } from "../lib/theme";
-import { LoginDialog } from "./LoginDialog";
+import { LoginScreen } from "./LoginDialog";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, code: "01" },
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/fornecedores", label: "Fornecedores", icon: Truck, code: "06" },
   { to: "/clientes", label: "Clientes", icon: Users, code: "07" },
   { to: "/categorias", label: "Categorias", icon: Tags, code: "08" },
+  { to: "/usuarios", label: "Usuários", icon: UserCog, code: "09", adminOnly: true },
 ];
 
 function Logo() {
@@ -49,9 +51,10 @@ function Logo() {
 }
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+  const isAdmin = useCan("admin");
   return (
     <nav aria-label="Principal" className="flex flex-col gap-0.5">
-      {NAV.map(({ to, label, icon: Icon, code }) => (
+      {NAV.filter((item) => !item.adminOnly || isAdmin).map(({ to, label, icon: Icon, code }) => (
         <NavLink
           key={to}
           to={to}
@@ -78,27 +81,27 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function AccessBox({ onLogin }: { onLogin: () => void }) {
-  const canWrite = useCanWrite();
-  if (canWrite) {
-    return (
-      <div className="rounded-[3px] border border-ok/40 bg-ok-soft p-3">
-        <p className="label !text-ok">Acesso completo</p>
-        <p className="mt-1 text-xs text-ink-2">Você pode criar e alterar dados.</p>
-        <button onClick={() => setApiKey(null)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-ink-2 hover:text-ink">
-          <LogOut className="size-3.5" /> Sair
-        </button>
-      </div>
-    );
-  }
+function UserBox() {
+  const session = useSession();
+  const queryClient = useQueryClient();
+  if (!session) return null;
+  const { user } = session;
   return (
-    <div className="rounded-[3px] border border-dashed border-line-strong p-3">
-      <p className="label flex items-center gap-1.5">
-        <Lock className="size-3" /> Modo leitura
+    <div className="rounded-[3px] border border-line p-3">
+      <p className="truncate text-sm font-semibold">{user.name}</p>
+      <p className="label mt-0.5 flex items-center gap-1.5">
+        {user.role === "LEITOR" && <Lock className="size-3" />}
+        {ROLE_LABEL[user.role]}
       </p>
-      <p className="mt-1 text-xs text-ink-3">Você vê tudo, mas não altera nada.</p>
-      <button onClick={onLogin} className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-signal-ink hover:underline">
-        <KeyRound className="size-3.5" /> Entrar com a chave
+      {user.role === "LEITOR" && <p className="mt-1 text-xs text-ink-3">Você vê tudo, mas não altera nada.</p>}
+      <button
+        onClick={() => {
+          setSession(null);
+          queryClient.clear();
+        }}
+        className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-ink-2 hover:text-ink"
+      >
+        <LogOut className="size-3.5" /> Sair
       </button>
     </div>
   );
@@ -106,9 +109,8 @@ function AccessBox({ onLogin }: { onLogin: () => void }) {
 
 export function Layout() {
   const dark = useDarkMode();
-  const canWrite = useCanWrite();
+  const session = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -117,11 +119,13 @@ export function Layout() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  if (!session) return <LoginScreen expired={takeExpired()} />;
+
   const sidebarBody = (
     <>
       <Sidebar onNavigate={() => setMenuOpen(false)} />
       <div className="mt-auto pt-6">
-        <AccessBox onLogin={() => setLoginOpen(true)} />
+        <UserBox />
       </div>
     </>
   );
@@ -163,14 +167,6 @@ export function Layout() {
             <Logo />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {!canWrite && (
-              <button
-                onClick={() => setLoginOpen(true)}
-                className="hidden items-center gap-1.5 rounded-[3px] border border-line-strong px-2.5 py-1.5 text-xs font-semibold text-ink-2 hover:border-ink hover:text-ink sm:inline-flex"
-              >
-                <KeyRound className="size-3.5" /> Entrar
-              </button>
-            )}
             <button
               onClick={toggleTheme}
               aria-label={dark ? "Usar tema claro" : "Usar tema escuro"}
@@ -187,7 +183,6 @@ export function Layout() {
         </main>
       </div>
 
-      <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
     </div>
   );
 }

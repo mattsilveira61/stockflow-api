@@ -1,9 +1,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
-import { Download, PackageSearch, Plus, Search, Upload } from "lucide-react";
+import { PackageSearch, Plus, Search, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { api, csvExportUrl } from "../api/client";
+import { api } from "../api/client";
+import { ExportButton } from "../components/ExportButton";
 import { useCategories } from "../api/hooks";
 import type { Page, Product } from "../api/types";
 import { ProductImportDialog } from "../components/CsvImport";
@@ -53,24 +54,22 @@ export function ProductsPage() {
         title="Produtos"
         actions={
           <div className="flex flex-wrap gap-2">
-            <a
-              href={csvExportUrl("/products/export.csv", {
+            <ExportButton
+              path="/products/export.csv"
+              filename="produtos.csv"
+              params={{
                 q: f.q,
                 category_id: f.category_id,
                 is_active: f.status === "all" ? undefined : f.status === "active",
                 sort: f.sort,
-              })}
-              download
-              className="inline-flex h-9 items-center gap-2 rounded-[3px] border border-line-strong px-3.5 text-sm font-semibold text-ink transition hover:border-ink hover:bg-sunken"
-            >
-              <Download className="size-4" /> Exportar
-            </a>
-            <WriteGuard>
+              }}
+            />
+            <WriteGuard need="admin">
               <Button variant="ghost" icon={Upload} onClick={() => setImporting(true)}>
                 Importar
               </Button>
             </WriteGuard>
-            <WriteGuard>
+            <WriteGuard need="admin">
               <Button icon={Plus} onClick={() => setCreating(true)}>
                 Novo produto
               </Button>

@@ -13,13 +13,13 @@ import { useToast } from "../components/Toast";
 import { Button, Card, EmptyState, StockBadge } from "../components/ui";
 import { formErrors } from "../lib/errors";
 import { money } from "../lib/format";
-import { useCanWrite } from "../lib/session";
+import { useCan } from "../lib/session";
 
 type Line = { product: Product; quantity: number };
 
 /** Carrinho: o total aqui é só uma prévia; o valor oficial é calculado pela API. */
 export function NewOrderPage() {
-  const canWrite = useCanWrite();
+  const canWrite = useCan("operate");
   const customers = useCustomerOptions();
   const navigate = useNavigate();
   const invalidate = useInvalidate();
@@ -86,7 +86,7 @@ export function NewOrderPage() {
 
       {!canWrite && (
         <div className="mb-4">
-          <FormError message="Modo leitura: clique em Entrar e informe a chave para criar pedidos." />
+          <FormError message="Seu perfil só consulta: não é possível criar pedidos." />
         </div>
       )}
 

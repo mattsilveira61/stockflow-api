@@ -12,7 +12,7 @@ import { useToast } from "../components/Toast";
 import { Button, Card, EmptyState, StockBadge } from "../components/ui";
 import { formErrors, parseMoney } from "../lib/errors";
 import { money } from "../lib/format";
-import { useCanWrite } from "../lib/session";
+import { useCan } from "../lib/session";
 
 type Line = { product: Pick<Product, "id" | "name" | "sku">; quantity: string; cost: string };
 
@@ -21,7 +21,7 @@ const suggestedCost = (price: string | number) => (Number(price) * 0.6).toFixed(
 
 /** Monta um rascunho. O estoque só muda quando a compra for recebida, na tela de detalhe. */
 export function NewPurchasePage() {
-  const canWrite = useCanWrite();
+  const canWrite = useCan("operate");
   const suppliers = useSupplierOptions(true);
   const navigate = useNavigate();
   const invalidate = useInvalidate();
@@ -93,7 +93,7 @@ export function NewPurchasePage() {
 
       {!canWrite && (
         <div className="mb-4">
-          <FormError message="Modo leitura: clique em Entrar e informe a chave para criar compras." />
+          <FormError message="Seu perfil só consulta: não é possível criar compras." />
         </div>
       )}
 

@@ -16,6 +16,8 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core import clock
+from app.core.config import get_settings
+from app.core.security import hash_password
 from app.db.session import SessionLocal
 from app.models import (
     Category,
@@ -25,8 +27,10 @@ from app.models import (
     Order,
     Product,
     PurchaseOrder,
+    Role,
     StockMovement,
     Supplier,
+    User,
 )
 from app.schemas.order import OrderCreate
 from app.schemas.purchase import PurchaseCreate
@@ -89,6 +93,12 @@ COST_RATE = Decimal("0.60")
 
 # Produtos que a simulação não repõe: terminam com estoque baixo ou zerado para o relatório.
 NO_RESTOCK = {"LIM-002", "HIG-005", "PAD-003", "BEB-002", "MER-008"}
+
+USERS = [
+    ("Ana Admin", "admin@stockflow.dev", Role.ADMIN),
+    ("Otávio Operador", "operador@stockflow.dev", Role.OPERADOR),
+    ("Lia Leitora", "leitor@stockflow.dev", Role.LEITOR),
+]
 
 CUSTOMERS = [
     ("Ana Souza", "ana.souza@exemplo.com"),
@@ -289,7 +299,20 @@ def seed_history(db: Session) -> None:
             db.commit()
 
 
+def seed_users(db: Session, password: str) -> None:
+    existing = set(db.scalars(select(User.email)))
+    db.add_all(
+        User(name=name, email=email, role=role, password_hash=hash_password(password))
+        for name, email, role in USERS
+        if email not in existing
+    )
+    db.commit()
+
+
 def seed(db: Session) -> None:
+    password = get_settings().demo_password
+    if password:
+        seed_users(db, password)
     seed_catalog(db)
     _seed_suppliers(db)
     if not db.scalar(select(func.count()).select_from(Order)):

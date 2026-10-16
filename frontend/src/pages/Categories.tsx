@@ -24,7 +24,7 @@ export function CategoriesPage() {
         eyebrow="Catálogo"
         title="Categorias"
         actions={
-          <WriteGuard>
+          <WriteGuard need="admin">
             <Button icon={Plus} onClick={() => setEditing("new")}>
               Nova categoria
             </Button>
@@ -59,7 +59,7 @@ export function CategoriesPage() {
                   <Td className="hidden text-ink-2 md:table-cell">{c.description ?? "—"}</Td>
                   <Td>{c.is_active ? <Badge tone="ok">Ativa</Badge> : <Badge>Desativada</Badge>}</Td>
                   <Td className="text-right">
-                    <WriteGuard>
+                    <WriteGuard need="admin">
                       <Button variant="ghost" icon={Pencil} onClick={() => setEditing(c)} aria-label={`Editar ${c.name}`} className="h-8 px-2.5">
                         <span className="hidden sm:inline">Editar</span>
                       </Button>

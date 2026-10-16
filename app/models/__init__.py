@@ -6,6 +6,7 @@ from app.models.order_item import OrderItem
 from app.models.product import Product
 from app.models.purchase import PurchaseOrder, PurchaseOrderItem, PurchaseStatus, Supplier
 from app.models.stock_movement import MovementReason, MovementType, StockMovement
+from app.models.user import Role, User
 
 __all__ = [
     "Category",
@@ -19,6 +20,8 @@ __all__ = [
     "PurchaseOrder",
     "PurchaseOrderItem",
     "PurchaseStatus",
+    "Role",
     "StockMovement",
     "Supplier",
+    "User",
 ]
