@@ -124,7 +124,9 @@ def cancel_order(db: Session, order_id: int) -> Order:
 
         products = lock_products(db, (i.product_id for i in order.items))
         for item in sorted(order.items, key=lambda i: i.product_id):
-            move_stock(db, products[item.product_id], MovementType.IN, item.quantity, MovementReason.CANCELLATION, order=order)
+            move_stock(
+                db, products[item.product_id], MovementType.IN, item.quantity, MovementReason.CANCELLATION, order=order
+            )
         db.commit()
     except Exception:
         db.rollback()

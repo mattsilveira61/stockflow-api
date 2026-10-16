@@ -96,7 +96,8 @@ def seed_catalog(db: Session) -> None:
 
     for sku, name, cat_name, price, _stock, min_stock, _weight in PRODUCTS:
         if not db.scalar(select(Product.id).where(Product.sku == sku)):
-            db.add(Product(sku=sku, name=name, category=categories[cat_name], unit_price=Decimal(price), min_stock=min_stock))
+            category = categories[cat_name]
+            db.add(Product(sku=sku, name=name, category=category, unit_price=Decimal(price), min_stock=min_stock))
 
     for name, email in CUSTOMERS:
         if not db.scalar(select(Customer.id).where(Customer.email == email)):
